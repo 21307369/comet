@@ -8,6 +8,7 @@ import {
   detectCometPackageScope,
   detectInstalledCometLanguage,
   detectInstalledCometTargets,
+  detectRepoUrl,
   formatNpmUpdateCommand,
   formatSkillUpdateCommand,
   updateCommand,
@@ -187,6 +188,185 @@ describe('update command helpers', () => {
     }
 
     expect(output).toContain('$ copy assets/skills-zh -> .claude/skills/ (project)');
+  });
+
+  describe('detectRepoUrl', () => {
+    it('reads a string repository URL from package.json', async () => {
+      const cometDir = path.join(tmpDir, 'comet');
+      await fs.mkdir(cometDir, { recursive: true });
+      await fs.writeFile(
+        path.join(cometDir, 'package.json'),
+        JSON.stringify({ repository: 'git+https://github.com/user/comet.git' }),
+        'utf-8',
+      );
+
+      await expect(detectRepoUrl(cometDir)).resolves.toBe(
+        'https://github.com/user/comet.git',
+      );
+    });
+
+    it('reads an object repository URL from package.json', async () => {
+      const cometDir = path.join(tmpDir, 'comet');
+      await fs.mkdir(cometDir, { recursive: true });
+      await fs.writeFile(
+        path.join(cometDir, 'package.json'),
+        JSON.stringify({
+          repository: {
+            type: 'git',
+            url: 'git+https://github.com/user/comet-fork.git',
+          },
+        }),
+        'utf-8',
+      );
+
+      await expect(detectRepoUrl(cometDir)).resolves.toBe(
+        'https://github.com/user/comet-fork.git',
+      );
+    });
+
+    it('returns undefined when no repository field in package.json', async () => {
+      const cometDir = path.join(tmpDir, 'comet');
+      await fs.mkdir(cometDir, { recursive: true });
+      await fs.writeFile(
+        path.join(cometDir, 'package.json'),
+        JSON.stringify({ name: 'my-comet' }),
+        'utf-8',
+      );
+
+      await expect(detectRepoUrl(cometDir)).resolves.toBeUndefined();
+    });
+
+    it('returns undefined when package.json does not exist', async () => {
+      await expect(detectRepoUrl(tmpDir)).resolves.toBeUndefined();
+    });
+  });
+
+  describe('--source local', () => {
+    it('copies skills from a local comet fork', async () => {
+      // Create a mock comet source with assets
+      const cometSource = path.join(tmpDir, 'comet-source');
+      const assetsDir = path.join(cometSource, 'assets');
+      await fs.mkdir(path.join(assetsDir, 'skills', 'comet-guard'), { recursive: true });
+      await fs.writeFile(
+        path.join(assetsDir, 'skills', 'comet-guard', 'SKILL.md'),
+        '# Comet Guard\n\nTest skill.',
+        'utf-8',
+      );
+      await fs.writeFile(
+        path.join(assetsDir, 'manifest.json'),
+        JSON.stringify({ skills: ['comet-guard/SKILL.md'] }),
+        'utf-8',
+      );
+
+      // Create a project with installed comet skills (target)
+      const projectDir = path.join(tmpDir, 'project');
+      await fs.mkdir(path.join(projectDir, '.claude', 'skills', 'comet'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectDir, '.claude', 'skills', 'comet', 'SKILL.md'),
+        '# Comet\n\nExisting skill',
+        'utf-8',
+      );
+
+      const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      try {
+        await updateCommand(projectDir, {
+          skipNpm: true,
+          scope: 'project',
+          source: 'local',
+          cometPath: cometSource,
+          language: 'en',
+        });
+      } finally {
+        log.mockRestore();
+      }
+
+      // Verify the skill was copied
+      const copiedSkill = await fs.readFile(
+        path.join(projectDir, '.claude', 'skills', 'comet-guard', 'SKILL.md'),
+        'utf-8',
+      );
+      expect(copiedSkill).toContain('Test skill.');
+    });
+
+    it('passes the assets dir to the JSON output', async () => {
+      const cometSource = path.join(tmpDir, 'comet-source');
+      const assetsDir = path.join(cometSource, 'assets');
+      await fs.mkdir(path.join(assetsDir, 'skills', 'comet-guard'), { recursive: true });
+      await fs.writeFile(
+        path.join(assetsDir, 'skills', 'comet-guard', 'SKILL.md'),
+        '# Comet Guard\n\nTest skill.',
+        'utf-8',
+      );
+      await fs.writeFile(
+        path.join(assetsDir, 'manifest.json'),
+        JSON.stringify({ skills: ['comet-guard/SKILL.md'] }),
+        'utf-8',
+      );
+
+      const projectDir = path.join(tmpDir, 'project');
+      await fs.mkdir(path.join(projectDir, '.claude', 'skills', 'comet'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectDir, '.claude', 'skills', 'comet', 'SKILL.md'),
+        '# Comet\n\nExisting skill',
+        'utf-8',
+      );
+
+      const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+      let json = '';
+      try {
+        await updateCommand(projectDir, {
+          json: true,
+          skipNpm: true,
+          scope: 'project',
+          source: 'local',
+          cometPath: cometSource,
+          language: 'en',
+        });
+        json = log.mock.calls.map((call) => call.join(' ')).join('\n');
+      } finally {
+        log.mockRestore();
+      }
+
+      const result = JSON.parse(json);
+      expect(result.source).toBe('local');
+      expect(result.assetsDir).toBe(assetsDir);
+      expect(result.skills.totalCopied).toBe(1);
+    });
+
+    it('throws an error when --comet-path is missing', async () => {
+      const projectDir = path.join(tmpDir, 'project');
+      await fs.mkdir(path.join(projectDir, '.claude', 'skills', 'comet'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectDir, '.claude', 'skills', 'comet', 'SKILL.md'),
+        '# Comet\n\nExisting skill',
+        'utf-8',
+      );
+
+      await expect(updateCommand(projectDir, { source: 'local', skipNpm: true })).rejects.toThrow(
+        '--source local requires --comet-path',
+      );
+    });
+
+    it('throws an error when the comet path has no assets directory', async () => {
+      const emptyDir = path.join(tmpDir, 'empty');
+      await fs.mkdir(emptyDir, { recursive: true });
+
+      const projectDir = path.join(tmpDir, 'project');
+      await fs.mkdir(path.join(projectDir, '.claude', 'skills', 'comet'), { recursive: true });
+      await fs.writeFile(
+        path.join(projectDir, '.claude', 'skills', 'comet', 'SKILL.md'),
+        '# Comet\n\nExisting skill',
+        'utf-8',
+      );
+
+      await expect(
+        updateCommand(projectDir, {
+          source: 'local',
+          cometPath: emptyDir,
+          skipNpm: true,
+        }),
+      ).rejects.toThrow('Assets directory not found');
+    });
   });
 
   it('prints structured JSON when requested', async () => {

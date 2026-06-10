@@ -4,6 +4,12 @@ All notable changes to @rpamis/comet will be documented in this file.
 
 ## What's Changed [0.3.8] - 2026-06-10
 
+### Added
+
+- **`comet update --source`**: `comet update` 命令新增 `--source <npm|github|local>` 选项，支持从 npm 包、GitHub 仓库或本地 fork 目录更新技能。适用于未发布到 npm 的 fork 项目。新增 `--repo <url>` 指定 GitHub 仓库，`--comet-path <path>` 指定本地 fork 根目录。
+
+- **Pi 扩展支持**: 新增 Pi 平台的原生扩展机制，`comet init` 现在会自动安装 `.pi/extensions/comet.ts`，为 Pi 提供 `/comet`、`/comet-hotfix`、`/comet-tweak`、`/comet-open`、`/comet-archive` 等命令，直接调用 Comet 工作流技能。
+
 ### Fixed
 
 - **扩展启动通知消除**: 移除 Pi 扩展每次会话启动时显示的 "✓ Comet 扩展已加载" 通知，改为静默加载，避免重复打扰用户。
@@ -11,10 +17,6 @@ All notable changes to @rpamis/comet will be documented in this file.
 ### Changed
 
 - **Superpowers 替换为中文版**: 将 Superpowers 安装源从上游 `obra/superpowers` 替换为 `superpowers-zh`（159k+ ⭐ 汉化增强版），支持 Claude Code / Cursor / Codex CLI / Kiro / Trae / Gemini CLI / Qwen Code 等 18 款工具，新增 4 个中国原创 skills（chinese-code-review、chinese-commit-conventions、chinese-documentation、chinese-git-workflow）。安装命令从 `npx skills add obra/superpowers --agent <name>` 改为 `npx superpowers-zh --tool <tool-name>`。
-
-### Added
-
-- **Pi 扩展支持**: 新增 Pi 平台的原生扩展机制，`comet init` 现在会自动安装 `.pi/extensions/comet.ts`，为 Pi 提供 `/comet`、`/comet-hotfix`、`/comet-tweak`、`/comet-open`、`/comet-archive` 等命令，直接调用 Comet 工作流技能。
 
 ## What's Changed [0.3.7] - 2026-06-07
 

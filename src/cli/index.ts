@@ -65,6 +65,13 @@ program
   .addOption(new Option('--language <lang>', 'Language for skills').choices(['en', 'zh']))
   .addOption(new Option('--scope <scope>', 'Install scope').choices(['global', 'project']))
   .addOption(new Option('--skip-npm', 'Skip npm package self-update').hideHelp())
+  .addOption(
+    new Option('--source <type>', 'Update source')
+      .choices(['npm', 'github', 'local'])
+      .default('npm'),
+  )
+  .addOption(new Option('--comet-path <path>', 'Path to local comet fork (required for --source local)'))
+  .addOption(new Option('--repo <url>', 'GitHub repo URL (for --source github; auto-detected from package.json if available)'))
   .action(async (targetPath = '.', options) => {
     await updateCommand(targetPath, options);
   });

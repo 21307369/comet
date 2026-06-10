@@ -124,7 +124,7 @@ comet init
 8. 在项目级安装时创建 `docs/superpowers/specs/` 和 `docs/superpowers/plans/` 工作目录
 
 > [!TIP]
-> 更新版本号
+> 更新版本
 >
 > 执行 `comet update` 或者 `npm install -g github:21307369/comet` 即可更新到最新版本。
 
@@ -189,13 +189,41 @@ npx skills add 21307369/comet
 <details>
 <summary><code>comet update [path]</code> — 更新 Comet 包和技能</summary>
 
-更新 npm 包，并刷新已检测到的项目级/全局 Comet 技能。
+更新 Comet 包，并刷新已检测到的项目级/全局 Comet 技能。支持三种更新来源：
 
-| 选项                  | 描述                             |
-|---------------------|--------------------------------|
+| 选项                  | 描述                                    |
+|---------------------|-----------------------------------------|
+| `--source <source>` | 更新来源：`npm`（默认）、`github` 或 `local`  |
+| `--repo <url>`      | GitHub 仓库 URL（用于 `--source github`） |
+| `--comet-path <path>` | 本地 Comet fork 路径（用于 `--source local` 或 `--source github`） |
 | `--json`            | 以 JSON 输出 npm 和 skill 更新结果     |
 | `--language <lang>` | 覆盖自动检测到的 skill 语言 (`en`, `zh`) |
 | `--scope <scope>`   | 仅更新 `global` 或 `project` 范围    |
+
+**来源模式：**
+
+- **`npm`**（默认）：运行 `npm install @rpamis/comet@latest` 并从安装的包中刷新技能。
+- **`github`**：将 GitHub 仓库克隆或拉取到 `~/.comet/repo/<name>/`，并从克隆的 assets 目录复制技能。需要 `--repo <url>` 或本地 fork 的 package.json 中有 `repository` 字段。
+- **`local`**：从本地 Comet fork 目录使用技能。需要 `--comet-path <path>` 指向 fork 根目录。
+
+**示例：**
+
+```bash
+# 默认：从 npm 更新
+comet update
+
+# 从本地 fork 更新（不拉取 git）
+comet update --source local --comet-path /Volumes/code/comet
+
+# 从 GitHub 更新（克隆或拉取）
+comet update --source github --repo https://github.com/你的/comet.git
+
+# 从 GitHub 更新（从 package.json 自动检测仓库）
+comet update --source github --comet-path /Volumes/code/comet
+
+# 与其他选项组合
+comet update --source local --comet-path /Volumes/code/comet --scope project --language zh --json
+```
 
 </details>
 

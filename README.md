@@ -141,9 +141,9 @@ comet init
 8. Create `docs/superpowers/specs/` and `docs/superpowers/plans/` working directories for project-scope installs
 
 > [!TIP]
-> update version
+> Update versions
 >
-> `comet update` or `npm install -g github:21307369/comet` to get the latest features and fixes.
+> Run `comet update` or `npm install -g github:21307369/comet` to get the latest features and fixes.
 
 ## Support for OpenClaw and Hermes, and other AI platforms
 
@@ -208,13 +208,41 @@ Checks project/global installation health, working directories, installed skills
 <details>
 <summary><code>comet update [path]</code> — Update Comet package and skills</summary>
 
-Updates the npm package and refreshes installed Comet skills in detected project/global targets.
+Updates the Comet package and refreshes installed skills in detected project/global targets. Supports three update sources:
 
-| Option              | Description                                   |
-|---------------------|-----------------------------------------------|
-| `--json`            | Output npm and skill update results as JSON   |
-| `--language <lang>` | Override detected skill language (`en`, `zh`) |
-| `--scope <scope>`   | Update only `global` or `project` scope       |
+| Option              | Description                                    |
+|---------------------|------------------------------------------------|
+| `--source <source>` | Update source: `npm` (default), `github`, or `local` |
+| `--repo <url>`      | GitHub repository URL (for `--source github`)  |
+| `--comet-path <path>` | Path to local Comet fork (for `--source local` or `--source github`) |
+| `--json`            | Output npm and skill update results as JSON    |
+| `--language <lang>` | Override detected skill language (`en`, `zh`)  |
+| `--scope <scope>`   | Update only `global` or `project` scope        |
+
+**Source modes:**
+
+- **`npm`** (default): Runs `npm install @rpamis/comet@latest` and refreshes skills from the installed package.
+- **`github`**: Clones or pulls the GitHub repository to `~/.comet/repo/<name>/` and copies skills from the cloned assets directory. Requires `--repo <url>` or a `repository` field in the package.json of your local fork.
+- **`local`**: Uses skills from a local Comet fork directory. Requires `--comet-path <path>` pointing to the root of your fork.
+
+**Examples:**
+
+```bash
+# Default: update from npm
+comet update
+
+# Update from a local fork (no git pull)
+comet update --source local --comet-path /Volumes/code/comet
+
+# Update from GitHub (clone or pull)
+comet update --source github --repo https://github.com/your/comet.git
+
+# Update from GitHub (auto-detect repo from package.json)
+comet update --source github --comet-path /Volumes/code/comet
+
+# Combine with other options
+comet update --source local --comet-path /Volumes/code/comet --scope project --language zh --json
+```
 
 </details>
 

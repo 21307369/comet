@@ -3,7 +3,7 @@ import os from 'os';
 import { createRequire } from 'module';
 import { promises as fs } from 'fs';
 import { fileURLToPath } from 'url';
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import { select } from '@inquirer/prompts';
 import { fileExists, readDir, readJson } from '../utils/file-system.js';
 import { getBaseDir } from '../core/detect.js';
@@ -21,11 +21,16 @@ const require = createRequire(import.meta.url);
 const { version } = require('../../package.json');
 const PACKAGE_NAME = '@rpamis/comet';
 
+type UpdateSource = 'npm' | 'github' | 'local';
+
 interface UpdateOptions {
   json?: boolean;
   language?: string;
   scope?: InstallScope;
   skipNpm?: boolean;
+  source?: UpdateSource;
+  cometPath?: string;
+  repo?: string;
 }
 
 type SkillLanguage = 'en' | 'zh';
@@ -189,19 +194,60 @@ export async function updateCommand(
 
   log(`\n  Comet Update v${version}\n`);
 
-  const packageScope = options.scope ?? (await detectCometPackageScope(projectPath));
+  const source = options.source ?? 'npm';
+  const packageScope: InstallScope =
+    source === 'npm' ? (options.scope ?? (await detectCometPackageScope(projectPath))) : 'global';
+
+  // --- Resolve assets directory based on source ---
+  let assetsDir: string | undefined;
   let npmStatus: 'updated' | 'failed' | 'skipped' = 'skipped';
-  if (!options.skipNpm) {
-    log(`  Updating npm package (${packageScope} scope)...`);
-    log(`    $ ${formatNpmUpdateCommand(packageScope)}`);
-    const npmUpdated = await updateCometNpmPackage(packageScope, projectPath);
-    if (npmUpdated) {
-      npmStatus = 'updated';
-      log(`  npm package: updated to latest ${PACKAGE_NAME}`);
+  let gitStatus: 'pulled' | 'cloned' | 'failed' | 'skipped' = 'skipped';
+
+  if (source === 'npm') {
+    if (!options.skipNpm) {
+      log(`  Updating npm package (${packageScope} scope)...`);
+      log(`    $ ${formatNpmUpdateCommand(packageScope)}`);
+      const npmUpdated = await updateCometNpmPackage(packageScope, projectPath);
+      if (npmUpdated) {
+        npmStatus = 'updated';
+        log(`  npm package: updated to latest ${PACKAGE_NAME}`);
+      } else {
+        npmStatus = 'failed';
+        log(`  npm package: update failed, continuing with bundled skills`);
+      }
     } else {
-      npmStatus = 'failed';
-      log(`  npm package: update failed, continuing with bundled skills`);
+      npmStatus = 'skipped';
     }
+    // assetsDir stays undefined → uses default (bundled package assets)
+  } else if (source === 'local') {
+    npmStatus = 'skipped';
+    if (!options.cometPath) {
+      throw new Error('--source local requires --comet-path <path> pointing to your comet fork');
+    }
+    const resolvedCometPath = path.resolve(options.cometPath);
+    assetsDir = path.join(resolvedCometPath, 'assets');
+    if (!(await fileExists(assetsDir))) {
+      throw new Error(`Assets directory not found at ${assetsDir}. Verify --comet-path points to a valid comet fork.`);
+    }
+    log(`  Using local source: ${resolvedCometPath}/`);
+  } else if (source === 'github') {
+    npmStatus = 'skipped';
+    const repoUrl = options.repo ?? (await detectRepoUrl(options.cometPath));
+    if (!repoUrl) {
+      throw new Error(
+        '--source github requires a repo URL. Provide --repo <url> or add a "repository" field to comet package.json.',
+      );
+    }
+    const repoName = repoUrl.replace(/^.*[\/]/, '').replace(/\.git$/, '');
+    const cacheDir = path.join(os.homedir(), '.comet', 'repo', repoName);
+    assetsDir = path.join(cacheDir, 'assets');
+
+    gitStatus = await syncGitRepo(repoUrl, cacheDir);
+    if (gitStatus === 'failed') {
+      throw new Error(`Failed to clone/pull from ${repoUrl}`);
+    }
+    log(`  GitHub source: ${repoUrl} → ${cacheDir}`);
+    log(`    Status: ${gitStatus}`);
   }
 
   const targets = await detectInstalledCometTargets(projectPath, {
@@ -213,11 +259,14 @@ export async function updateCommand(
       console.log(
         JSON.stringify(
           {
+            source,
             npm: {
-              scope: options.skipNpm ? 'skipped' : packageScope,
+              scope: options.skipNpm ? 'skipped' : (options.scope ?? 'unknown'),
               status: npmStatus,
-              command: options.skipNpm ? null : formatNpmUpdateCommand(packageScope),
+              command: options.skipNpm ? null : formatNpmUpdateCommand(options.scope ?? 'global'),
             },
+            git: { status: gitStatus },
+            assetsDir: assetsDir ?? '(default)',
             skills: { totalCopied: 0, targets: [] },
             rules: { totalCopied: 0 },
             hooks: { totalInstalled: 0 },
@@ -242,7 +291,7 @@ export async function updateCommand(
   }
 
   // Copy skills for each platform (overwrite)
-  log(`\n  Copying ${(await getManifestSkills()).length} skill files...\n`);
+  log(`\n  Copying ${(await getManifestSkills(assetsDir)).length} skill files...\n`);
 
   let totalCopied = 0;
   let totalRulesCopied = 0;
@@ -257,6 +306,7 @@ export async function updateCommand(
       true,
       languageSkillsDir,
       target.scope,
+      assetsDir,
     );
     totalCopied += copied;
     targetResults.push({
@@ -280,6 +330,7 @@ export async function updateCommand(
         target.platform,
         true,
         target.scope,
+        assetsDir,
       );
       totalRulesCopied += ruleCopied;
       if (ruleCopied > 0) {
@@ -296,6 +347,7 @@ export async function updateCommand(
           baseDir,
           target.platform,
           target.scope,
+          assetsDir,
         );
         if (installed) {
           totalHooksInstalled++;
@@ -337,11 +389,14 @@ export async function updateCommand(
     console.log(
       JSON.stringify(
         {
+          source,
           npm: {
-            scope: options.skipNpm ? 'skipped' : packageScope,
+            scope: options.skipNpm ? 'skipped' : (packageScope ?? 'unknown'),
             status: npmStatus,
-            command: options.skipNpm ? null : formatNpmUpdateCommand(packageScope),
+            command: options.skipNpm ? null : formatNpmUpdateCommand(packageScope ?? 'global'),
           },
+          git: { status: gitStatus },
+          assetsDir: assetsDir ?? '(default)',
           skills: {
             totalCopied,
             targets: targetResults,
@@ -360,12 +415,55 @@ export async function updateCommand(
   const languages = [...new Set(targetResults.map((target) => target.language))].join(', ');
   const scopes = [...new Set(targetResults.map((target) => target.scope))].join(', ');
   log(`\n  Summary:`);
-  log(`    npm: ${npmStatus}${options.skipNpm ? '' : ` (${packageScope})`}`);
+  log(`    source: ${source}${source !== 'npm' ? ` (assets: ${assetsDir})` : ''}`);
+  log(`    npm: ${npmStatus}`);
+  log(`    git: ${gitStatus}`);
   log(`    skills: ${targets.length} target(s), ${totalCopied} files updated`);
   log(`    codegraph: ${codegraphStatus}`);
   log(`    scope: ${scopes}`);
   log(`    language: ${languages}`);
   log(`\n  Update complete.\n`);
+}
+
+/**
+ * Detect the GitHub repo URL from comet's package.json `repository` field.
+ * If cometPath is provided, reads from that path; otherwise reads from the
+ * installed npm package's package.json.
+ */
+async function detectRepoUrl(cometPath?: string): Promise<string | undefined> {
+  const pkgPath = cometPath
+    ? path.join(path.resolve(cometPath), 'package.json')
+    : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', 'package.json');
+
+  if (!(await fileExists(pkgPath))) return undefined;
+
+  try {
+    const pkg = await readJson<{ repository?: string | { url?: string; type?: string } }>(
+      pkgPath,
+    );
+    if (!pkg.repository) return undefined;
+    if (typeof pkg.repository === 'string') return pkg.repository.replace(/^git\+/,'');
+    return pkg.repository.url?.replace(/^git\+/,'');
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * Clone a git repo (if not already cloned) or pull latest.
+ * Returns the status: 'cloned', 'pulled', or 'failed'.
+ */
+async function syncGitRepo(repoUrl: string, destDir: string): Promise<'cloned' | 'pulled' | 'failed'> {
+  try {
+    if (await fileExists(path.join(destDir, '.git'))) {
+      execSync('git pull --ff-only', { cwd: destDir, stdio: 'pipe' });
+      return 'pulled';
+    }
+    execSync(`git clone --depth 1 ${repoUrl} ${destDir}`, { stdio: 'pipe' });
+    return 'cloned';
+  } catch {
+    return 'failed';
+  }
 }
 
 export {
@@ -375,5 +473,7 @@ export {
   detectInstalledCometTargets,
   formatNpmUpdateCommand,
   formatSkillUpdateCommand,
+  detectRepoUrl,
+  syncGitRepo,
 };
-export type { InstalledCometTarget, SkillLanguage };
+export type { InstalledCometTarget, SkillLanguage, UpdateSource };
