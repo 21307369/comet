@@ -7,8 +7,8 @@
 #   get <change-name> <field>       — Read a field value from .comet.yaml
 #   set <change-name> <field> <val> — Update a field value
 #   transition <change-name> <event> — Apply a validated state transition
-#   check <change-name> <phase>    — Verify entry requirements for a phase
-#   check <change-name> <phase> --recover — Output structured recovery context for compaction resume
+#   check <change-name> <phase> [--recover] — Verify entry requirements for a phase
+#   conflict-check <proposed-name> [keywords...] — Scan for related existing documents
 #   scale <change-name>             — Assess and set verification mode based on metrics
 #
 # Workflows: full, hotfix, tweak
@@ -957,6 +957,178 @@ cmd_recover() {
   echo "=== End Recovery Context ==="
 }
 
+cmd_conflict_check() {
+  local proposed_name="$1"
+  shift
+  local keywords=("$@")
+
+  validate_change_name "$proposed_name"
+
+  local conflicts=0
+  local found_docs=""
+  local index_file="docs/superpowers/INDEX.md"
+
+  echo "=== Conflict Check: $proposed_name ==="
+
+  # 0. Check Design Registry (INDEX.md) first — authoritative source
+  if [ -f "$index_file" ] && [ ${#keywords[@]} -gt 0 ]; then
+    local index_hits=""
+    for kw in "${keywords[@]}"; do
+      # Match keyword in table rows (keyword column is last, backtick-wrapped)
+      local matches
+      matches=$(grep -i "\`$kw\`" "$index_file" 2>/dev/null | grep -v "^#" | grep -v "^>" || true)
+      if [ -n "$matches" ]; then
+        # Extract the design doc link from matched lines
+        local doc_link
+        doc_link=$(echo "$matches" | grep -o '\[design\]([^)]*)' | head -1 || true)
+        local plan_link
+        plan_link=$(echo "$matches" | grep -o '\[plan\]([^)]*)' | head -1 || true)
+        local feature_name
+        feature_name=$(echo "$matches" | head -1 | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}')
+        
+        yellow "INDEX HIT: Keyword '$kw' found in Design Registry — feature: $feature_name" >&2
+        if [ -n "$doc_link" ]; then
+          local doc_path
+          doc_path=$(echo "$doc_link" | sed 's/\[design\](\(.*\))/\1/')
+          found_docs="$found_docs\n  - docs/superpowers/$doc_path (INDEX keyword: $kw, feature: $feature_name)"
+        fi
+        if [ -n "$plan_link" ]; then
+          local plan_path
+          plan_path=$(echo "$plan_link" | sed 's/\[plan\](\(.*\))/\1/')
+          found_docs="$found_docs\n  - docs/superpowers/$plan_path (INDEX keyword: $kw, feature: $feature_name)"
+        fi
+        conflicts=$((conflicts + 1))
+        index_hits="$index_hits $kw"
+      fi
+    done
+    
+    # Also check proposed name against feature names in INDEX.md
+    for kw in "${keywords[@]}"; do
+      if grep -iq "$kw" "$index_file" 2>/dev/null | grep -q "|.*$kw.*|" 2>/dev/null; then
+        : # already handled above
+      fi
+    done
+    
+    # If INDEX.md had hits, skip file-system scan (INDEX is authoritative)
+    if [ "$conflicts" -gt 0 ]; then
+      echo ""
+      echo "Found $conflicts conflict(s) via Design Registry:"
+      echo ""
+      echo -e "$found_docs"
+      echo ""
+      red "ACTION REQUIRED: Related design already registered in INDEX.md." >&2
+      red "Options:" >&2
+      red "  1. Continue the existing change instead of creating a new one" >&2
+      red "  2. Extend the existing design doc instead of creating a parallel one" >&2
+      red "  3. Use a distinctly different name and confirm with user that scope is unrelated" >&2
+      echo ""
+      return 1
+    else
+      green "INDEX.md: no matching keywords found in registry"
+    fi
+  fi
+
+  # 1. Check active (non-archived) changes with similar names
+  if [ -d "openspec/changes" ]; then
+    for change_dir in openspec/changes/*/; do
+      [ -d "$change_dir" ] || continue
+      local existing_name
+      existing_name=$(basename "$change_dir")
+      # Skip archive directory
+      [ "$existing_name" = "archive" ] && continue
+
+      # Name similarity check
+      if [ "$existing_name" = "$proposed_name" ]; then
+        red "CONFLICT: Active change with exact same name exists: $change_dir" >&2
+        conflicts=$((conflicts + 1))
+        continue
+      fi
+
+      # Keyword overlap with existing proposal.md
+      if [ ${#keywords[@]} -gt 0 ] && [ -f "$change_dir/proposal.md" ]; then
+        for kw in "${keywords[@]}"; do
+          if grep -iq "$kw" "$change_dir/proposal.md" 2>/dev/null; then
+            yellow "WARNING: Keyword '$kw' matches active change: $existing_name (proposal.md)" >&2
+            found_docs="$found_docs\n  - $change_dir/proposal.md (matches: $kw)"
+            conflicts=$((conflicts + 1))
+            break
+          fi
+        done
+      fi
+    done
+  fi
+
+  # 2. Check docs/superpowers/specs/ for related design docs
+  if [ -d "docs/superpowers/specs" ]; then
+    for spec_file in docs/superpowers/specs/*.md; do
+      [ -f "$spec_file" ] || continue
+      local basename_spec
+      basename_spec=$(basename "$spec_file")
+      # Skip conflict-report files
+      echo "$basename_spec" | grep -q "conflict-report" && continue
+
+      # Check filename for keyword matches
+      for kw in "${keywords[@]}"; do
+        if echo "$basename_spec" | grep -iq "$kw"; then
+          yellow "WARNING: Keyword '$kw' matches existing design doc: $spec_file" >&2
+          found_docs="$found_docs\n  - $spec_file (filename matches: $kw)"
+          conflicts=$((conflicts + 1))
+          break
+        fi
+      done
+
+      # Check file content for keyword matches (first 20 lines for frontmatter/title)
+      if [ ${#keywords[@]} -gt 0 ]; then
+        for kw in "${keywords[@]}"; do
+          if head -20 "$spec_file" 2>/dev/null | grep -iq "$kw"; then
+            yellow "WARNING: Keyword '$kw' found in: $spec_file" >&2
+            # Only count if not already counted by filename match
+            if ! echo "$basename_spec" | grep -iq "$kw"; then
+              found_docs="$found_docs\n  - $spec_file (content matches: $kw)"
+              conflicts=$((conflicts + 1))
+            fi
+            break
+          fi
+        done
+      fi
+    done
+  fi
+
+  # 3. Check docs/superpowers/plans/ for related plans
+  if [ -d "docs/superpowers/plans" ]; then
+    for plan_file in docs/superpowers/plans/*.md; do
+      [ -f "$plan_file" ] || continue
+      for kw in "${keywords[@]}"; do
+        if basename "$plan_file" | grep -iq "$kw"; then
+          yellow "WARNING: Keyword '$kw' matches existing plan: $plan_file" >&2
+          found_docs="$found_docs\n  - $plan_file (filename matches: $kw)"
+          conflicts=$((conflicts + 1))
+          break
+        fi
+      done
+    done
+  fi
+
+  # Output summary
+  echo ""
+  if [ "$conflicts" -gt 0 ]; then
+    echo "Found $conflicts potential conflict(s):"
+    echo ""
+    echo -e "$found_docs"
+    echo ""
+    red "ACTION REQUIRED: Related documents already exist." >&2
+    red "Options:" >&2
+    red "  1. Continue the existing change instead of creating a new one" >&2
+    red "  2. Extend the existing design doc instead of creating a parallel one" >&2
+    red "  3. Use a distinctly different name and confirm with user that scope is unrelated" >&2
+    echo ""
+    return 1
+  else
+    green "No conflicts found — safe to create new change"
+    return 0
+  fi
+}
+
 cmd_scale() {
   local change_name="$1"
 
@@ -1148,6 +1320,13 @@ case "$SUBCOMMAND" in
       cmd_check "$@"
     fi
     ;;
+  conflict-check)
+    if [ $# -lt 1 ]; then
+      red "Usage: comet-state.sh conflict-check <proposed-name> [keywords...]" >&2
+      exit 1
+    fi
+    cmd_conflict_check "$@"
+    ;;
   scale)
     if [ $# -lt 1 ]; then
       red "Usage: comet-state.sh scale <change-name>" >&2
@@ -1173,6 +1352,7 @@ case "$SUBCOMMAND" in
     echo "  set <change-name> <field> <val> — Update a field value in .comet.yaml" >&2
     echo "  transition <change-name> <event> — Apply a validated state transition" >&2
     echo "  check <change-name> <phase>    — Verify entry requirements for a phase" >&2
+    echo "  conflict-check <name> [keywords...] — Scan for related existing documents" >&2
     echo "  scale <change-name>             — Assess and set verification mode based on metrics" >&2
     echo "  next <change-name>              — Resolve the next workflow step (auto/manual/done)" >&2
     echo "" >&2

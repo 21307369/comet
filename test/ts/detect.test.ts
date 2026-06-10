@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
@@ -19,8 +19,13 @@ const mockPlatform: Platform = {
 
 describe('detect', () => {
   let tmpDir: string;
+  let originalHomedir: typeof os.homedir;
 
   beforeEach(async () => {
+    // Mock os.homedir to avoid checking real global directories
+    originalHomedir = os.homedir;
+    vi.spyOn(os, 'homedir').mockReturnValue('/nonexistent-home-dir');
+
     tmpDir = path.join(
       os.tmpdir(),
       `comet-detect-${Date.now()}-${Math.random().toString(36).slice(2)}`,
@@ -29,6 +34,7 @@ describe('detect', () => {
   });
 
   afterEach(async () => {
+    vi.restoreAllMocks();
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 

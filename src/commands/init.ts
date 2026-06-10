@@ -13,6 +13,7 @@ import {
 import { installOpenSpec } from '../core/openspec.js';
 import { installSuperpowersForPlatforms } from '../core/superpowers.js';
 import { installCodegraph, filterSupportedPlatforms } from '../core/codegraph.js';
+import { installPiExtension } from '../core/pi-extension.js';
 
 type InitOptions = {
   yes?: boolean;
@@ -55,15 +56,19 @@ const COMET_BANNER = [
   `            OpenSpec + Superpowers Workflow       `,
 ].join('\n');
 
-async function selectScope(options: InitOptions): Promise<InstallScope> {
+async function selectScope(options: InitOptions, language: LanguageConfig): Promise<InstallScope> {
   if (options.scope) return options.scope;
   if (options.yes) return 'project';
 
+  const labels = language.id === 'zh'
+    ? { project: '项目（当前目录）', global: '全局（用户主目录）' }
+    : { project: 'Project (current directory)', global: 'Global (home directory)' };
+
   return select({
-    message: 'Install scope:',
+    message: language.id === 'zh' ? '安装范围：' : 'Install scope:',
     choices: [
-      { name: 'Project (current directory)', value: 'project' as const },
-      { name: 'Global (home directory)', value: 'global' as const },
+      { name: labels.project, value: 'project' as const },
+      { name: labels.global, value: 'global' as const },
     ],
   });
 }
@@ -79,12 +84,17 @@ async function selectLanguage(options: InitOptions): Promise<LanguageConfig> {
   return LANGUAGES.find((l) => l.id === langId) ?? LANGUAGES[0];
 }
 
-async function selectPlatforms(detected: Set<string>, options: InitOptions): Promise<string[]> {
-  const choices = PLATFORMS.map((p) => ({
-    name: `${p.name}${detected.has(p.id) ? ' (detected)' : ''}`,
-    value: p.id,
-    checked: detected.has(p.id),
-  }));
+async function selectPlatforms(detected: Set<string>, options: InitOptions, scope: InstallScope): Promise<string[]> {
+  const choices = PLATFORMS.map((p) => {
+    const skillsDir = getPlatformSkillsDir(p, scope);
+    const pathInfo = scope === 'global' ? `~/` : '';
+    const displayPath = `${pathInfo}${skillsDir}/skills/`;
+    return {
+      name: `${p.name} ${displayPath}${detected.has(p.id) ? ' (detected)' : ''}`,
+      value: p.id,
+      checked: detected.has(p.id),
+    };
+  });
 
   if (options.yes) {
     const selected = [...detected];
@@ -97,27 +107,48 @@ async function selectPlatforms(detected: Set<string>, options: InitOptions): Pro
 async function promptOverwriteChoice(
   componentName: string,
   platformName: string,
+  language: LanguageConfig,
 ): Promise<'overwrite' | 'skip'> {
   return select({
-    message: `${componentName} already installed on ${platformName}. What to do?`,
-    choices: [
-      { name: 'Overwrite', value: 'overwrite' as const },
-      { name: 'Skip', value: 'skip' as const },
-    ],
+    message:
+      language.id === 'zh'
+        ? `${platformName} 已安装 ${componentName}。如何处理？`
+        : `${componentName} already installed on ${platformName}. What to do?`,
+    choices:
+      language.id === 'zh'
+        ? [
+            { name: '覆盖', value: 'overwrite' as const },
+            { name: '跳过', value: 'skip' as const },
+          ]
+        : [
+            { name: 'Overwrite', value: 'overwrite' as const },
+            { name: 'Skip', value: 'skip' as const },
+          ],
   });
 }
 
 async function promptBulkOverwriteChoice(
   platformName: string,
   components: string[],
+  language: LanguageConfig,
 ): Promise<BulkOverwriteChoice> {
   return select({
-    message: `${platformName} already has ${components.join(', ')} installed. What to do?`,
-    choices: [
-      { name: 'Overwrite all existing components', value: 'overwrite-all' as const },
-      { name: 'Skip all existing components', value: 'skip-all' as const },
-      { name: 'Choose per component', value: 'choose' as const },
-    ],
+    message:
+      language.id === 'zh'
+        ? `${platformName} 已安装 ${components.join(', ')}。如何处理？`
+        : `${platformName} already has ${components.join(', ')} installed. What to do?`,
+    choices:
+      language.id === 'zh'
+        ? [
+            { name: '全部覆盖', value: 'overwrite-all' as const },
+            { name: '全部跳过', value: 'skip-all' as const },
+            { name: '逐个选择', value: 'choose' as const },
+          ]
+        : [
+            { name: 'Overwrite all existing components', value: 'overwrite-all' as const },
+            { name: 'Skip all existing components', value: 'skip-all' as const },
+            { name: 'Choose per component', value: 'choose' as const },
+          ],
   });
 }
 
@@ -206,11 +237,11 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
   log(`  Setting up Comet in ${projectPath}\n`);
 
   const detected = await detectPlatforms(projectPath);
-  const scope = await selectScope(options);
   const language = await selectLanguage(options);
+  const scope = await selectScope(options, language);
   log(`  Language: ${language.name}`);
 
-  const selectedPlatformIds = await selectPlatforms(detected, options);
+  const selectedPlatformIds = await selectPlatforms(detected, options, scope);
   if (selectedPlatformIds.length === 0) {
     if (options.json) {
       console.log(
@@ -261,7 +292,7 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
       ].filter((component): component is string => Boolean(component));
 
       if (existingComponents.length > 1) {
-        const bulkChoice = await promptBulkOverwriteChoice(platform.name, existingComponents);
+        const bulkChoice = await promptBulkOverwriteChoice(platform.name, existingComponents, language);
         if (bulkChoice !== 'choose') {
           ({ osAction, spAction, cmAction } = applyBulkOverwriteChoice(
             { osAction, spAction, cmAction },
@@ -272,13 +303,13 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
       }
 
       if (osAction === 'install' && hasOS) {
-        osAction = await promptOverwriteChoice('OpenSpec', platform.name);
+        osAction = await promptOverwriteChoice('OpenSpec', platform.name, language);
       }
       if (spAction === 'install' && hasSP) {
-        spAction = await promptOverwriteChoice('Superpowers', platform.name);
+        spAction = await promptOverwriteChoice('Superpowers', platform.name, language);
       }
       if (cmAction === 'install' && hasCM) {
-        cmAction = await promptOverwriteChoice('Comet', platform.name);
+        cmAction = await promptOverwriteChoice('Comet', platform.name, language);
       }
     }
 
@@ -390,9 +421,26 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
     log('\n  CodeGraph: skipped');
   }
 
+  // Install Pi extension if Pi platform is selected
+  const hasPi = selectedPlatformIds.includes('pi');
+  if (hasPi) {
+    log('\n  Installing Pi extension...');
+    const piResult = await installPiExtension(projectPath, scope, true);
+    if (piResult.installed) {
+      const destPath = scope === 'global' ? '~/.pi/agent/extensions/comet.ts' : '.pi/extensions/comet.ts';
+      log(`  Pi extension: installed -> ${destPath}`);
+    } else if (piResult.skipped) {
+      log(`  Pi extension: skipped (already exists)`);
+    } else if (piResult.error) {
+      log(`  Pi extension: failed (${piResult.error})`);
+    }
+  }
+
   if (scope === 'project') {
     await createWorkingDirs(projectPath);
   }
+
+  // Language is detected by the Pi extension from installed SKILL.md content
 
   if (options.json) {
     console.log(
