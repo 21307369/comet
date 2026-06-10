@@ -35,7 +35,7 @@ Proceed to Step 1 after verification passes. The script outputs specific failure
 
 ### 1. Final Archive Confirmation (Blocking Point)
 
-After entry verification passes, **must use the current platform's available user input/confirmation mechanism to pause and wait for the user to confirm whether to archive immediately**. Must not run `"$COMET_BASH" "$COMET_ARCHIVE" "<change-name>"` before user confirmation. If the current platform has no structured question tool, ask an equivalent single-select question in the conversation, stop the workflow, and wait for the user's reply before continuing.
+After entry verification passes, follow main skill blocking point rule to pause for user confirmation on whether to archive immediately. Must not run `"$COMET_BASH" "$COMET_ARCHIVE" "<change-name>"` before user confirmation.
 
 Before confirmation, show the user a brief summary:
 - Change name
@@ -74,7 +74,31 @@ The script calls OpenSpec archive to merge `ADDED/MODIFIED/REMOVED/RENAMED` delt
 
 Use `--dry-run` flag to preview without executing.
 
-### 3. Lifecycle Closed Loop
+### 3. Update Design Registry (INDEX.md)
+
+After successful archive, must update `docs/superpowers/INDEX.md` to maintain the design registry:
+
+1. **Read the archived change metadata** from `openspec/changes/archive/YYYY-MM-DD-<name>/.comet.yaml`:
+   - `design_doc` field: path to the design document
+   - `plan` field: path to the plan document
+   - `created_at` field: creation date (use as completion date)
+
+2. **Remove the change from the "In Progress" table** in `docs/superpowers/INDEX.md` (if it exists there)
+
+3. **Add a new row to the "Completed" table** with:
+   - Date: archive date (YYYY-MM-DD from the archive directory name)
+   - Feature name: extract from the change's `proposal.md` title or first heading
+   - Design doc: relative path from `docs/superpowers/` (e.g., `specs/2026-06-02-skill-management-design.md`)
+   - Plan doc: relative path from `docs/superpowers/` (e.g., `plans/2026-06-02-skill-management.md`)
+   - Keywords: the same 3–5 keywords used in the initial `conflict-check` (extract from the change's proposal.md or tasks.md)
+
+4. **Commit the INDEX.md update** with message: `docs: update design registry after archiving <change-name>`
+
+This ensures future `conflict-check` executions can find the completed design via INDEX.md scanning.
+
+**Skip conditions**: If `docs/superpowers/INDEX.md` does not exist in the project, skip this step (INDEX.md is a project-level convention, not a hard requirement). If the change was not a full workflow (hotfix/tweak), skip this step (only full workflow changes produce design docs).
+
+### 4. Lifecycle Closed Loop
 
 Spec lifecycle completes here:
 ```

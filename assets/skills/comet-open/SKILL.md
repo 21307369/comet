@@ -46,7 +46,7 @@ Recommend splitting when any condition applies:
 - The work is expected to produce multiple delta specs or more than 3 large tasks
 - Failure or delay in one part should not block other parts from entering later phases
 
-When splitting is recommended, must use the current platform's available user input/confirmation mechanism to pause and wait for the user's choice. If the current platform has no structured question tool, ask an equivalent single-select question in the conversation, stop the workflow, and wait for the user's reply before continuing.
+When splitting is recommended, follow main skill blocking point rule to pause for user choice.
 
 The user choices must include:
 - "Create multiple OpenSpec changes" — create independent changes from the proposed split
@@ -65,11 +65,44 @@ Minimal resume rule: do not add a dedicated batch state file. On resume, first c
 
 ### 1b. Requirements Clarification Completion Confirmation (Blocking Point)
 
-Before creating OpenSpec artifacts, must use the current platform's available user input/confirmation mechanism to pause and wait for the user to confirm requirements clarification is complete. If the current platform has no structured question tool, present the clarification summary in the conversation, ask a confirmation question, stop the workflow, and wait for the user's reply before continuing.
+Before creating OpenSpec artifacts, follow main skill blocking point rule to pause for confirmation that requirements clarification is complete.
 
 When pausing, present the clarification summary: goals, non-goals, scope boundaries, key unknowns, and draft acceptance scenarios.
 
 Must not create proposal.md, design.md, or tasks.md before the user confirms requirements clarification is complete, and must not use the Skill tool to load the `openspec-propose` skill to generate all artifacts in one pass.
+
+### 1c. Pre-flight Document Conflict Check (Blocking Point)
+
+Before creating any change artifacts, must run the programmatic conflict check to scan for related existing documents. The check first consults the **Design Registry** (`docs/superpowers/INDEX.md`) — the authoritative index of all design documents — then falls back to file-system scanning. This prevents parallel duplicate design documents across `openspec/changes/` and `docs/superpowers/`.
+
+**Execution:**
+
+```bash
+COMET_ENV="${COMET_ENV:-$(find . "$HOME"/.*/skills "$HOME/.config" "$HOME/.gemini" -path '*/comet/scripts/comet-env.sh' -type f -print -quit 2>/dev/null)}"
+. "$COMET_ENV"
+
+# Extract keywords from the clarification summary (change name + topic nouns)
+"$COMET_BASH" "$COMET_STATE" conflict-check <proposed-name> <keyword1> <keyword2> ...
+```
+
+**Keyword extraction rules**: derive 3–5 keywords from the clarification summary — the proposed change name plus the core topic nouns (module names, feature names, subsystem names). Do NOT include generic words like "add", "fix", "update", "improve".
+
+**Check priority**: Design Registry (`docs/superpowers/INDEX.md`) → file-system scan (`docs/superpowers/specs/`, `docs/superpowers/plans/`, `openspec/changes/` non-archived).
+
+**When conflict check returns 1 (conflicts found):**
+
+Follow main skill blocking point rule to pause and present the conflict report, waiting for user reply. The user choices must include:
+- "Continue the existing change" — abort this new change, route to the existing active change
+- "Extend the existing design doc" — abort this new change, open the existing design doc for editing instead
+- "Confirm unrelated, create new" — user explicitly confirms scope is unrelated, proceed to Step 2 with a distinctly different name
+
+Must not create proposal.md, design.md, or tasks.md until the user completes the conflict check choice.
+
+**When conflict check returns 0 (no conflicts):**
+
+Proceed to Step 2 normally.
+
+**After creating the change**: must update `docs/superpowers/INDEX.md` — add the new change to the "In Progress" table with keywords, so future conflict checks can find it.
 
 ### 2. Create Change Structure + Initialize State
 
@@ -83,7 +116,22 @@ After the skill loads, follow its guidance to create the change skeleton, but ov
 2. If the user has already confirmed a clarification summary (Step 1b), use that summary directly to draft proposal.md — do NOT ask the user to describe the change again
 3. If no clarification summary exists (edge case), fall back to the skill's default behavior of asking the user
 
-Then fill in design.md and tasks.md one by one; every document must be based on the confirmed clarification summary.
+Then fill in proposal.md, design.md, and tasks.md one by one; every document must be based on the confirmed clarification summary.
+
+#### Product Convergence Principle
+
+**General rule (applies to all artifacts)**:
+- Before generating any artifact, must read actual project code — existing file structure, code patterns, dependencies, and conventions
+- All output must be grounded in the project's real context; must not be generated from templates or generic knowledge
+- Implementation logic uses pseudocode/logic descriptions instead of complete code to reduce token consumption
+
+**Artifact responsibilities and content depth**:
+
+| Artifact | Scope | Content requirements |
+|----------|-------|---------------------|
+| proposal.md | Pure logic layer | Problem background, goals, scope, non-goals. No code; corresponds to actual project modules |
+| design.md | Design layer | Architecture decisions, interface signatures, data structure definitions, core logic pseudocode. Interface signatures/type definitions should be written as code where needed; implementation logic uses pseudocode/logic descriptions |
+| tasks.md | Execution layer | Task decomposition, referencing specific file paths and existing interfaces. Implementation details use logic descriptions, but must be concrete enough for executor to act directly |
 
 **Naming and scope guard**: Change name must use a user-specified name or a name confirmed through the current platform's available user input/confirmation mechanism — must not auto-generate or infer. Change scope must match the user's description — must not expand or narrow it independently.
 
@@ -130,16 +178,16 @@ Proceed to Step 4 after verification passes. The script outputs specific failure
 
 ### 4. Content Completeness Check
 
-Confirm the three documents have complete content:
+Confirm the three documents have complete content, meeting each document's content requirements per the Product Convergence Principle:
 - **proposal.md**: problem background, goals, scope, non-goals
-- **design.md**: high-level architecture decisions, approach selection, data flow
-- **tasks.md**: task list, each task has a clear description
+- **design.md**: architecture decisions, interface signatures, data structures, core logic pseudocode
+- **tasks.md**: task list, referencing specific file paths and existing interfaces
 
 **File existence verification**: Confirm all three file paths exist and are non-empty. If any file is missing or empty, must not enter Step 5 or execute phase guard — return to creation step to fill the gap.
 
 ### 5. User Review and Confirmation (Blocking Point)
 
-After the three documents are created and content completeness check passes, **must use the current platform's available user input/confirmation mechanism to pause and wait for user confirmation**. Must not execute phase guard or auto-transition before user confirmation. If the current platform has no structured question tool, ask an equivalent single-select question in the conversation, stop the workflow, and wait for the user's reply before continuing.
+After the three documents are created and content completeness check passes, follow main skill blocking point rule to pause for user confirmation.
 
 The user confirmation question must be presented as a single-select question with the following summary and options:
 
@@ -170,17 +218,4 @@ Full workflow auto-transitions to `phase: design`; hotfix/tweak presets auto-tra
 
 ## Automatic Handoff to Next Phase
 
-> **Terminology distinction**: the "phase advancement" above is performed by guard `--apply`, which updates the `.comet.yaml` `phase` field. This step **always happens** and is not controlled by `auto_transition`. This section's "automatic handoff" only controls whether to automatically invoke the next skill.
-
-After user confirmation and guard-based phase advancement, run:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-The script determines the next action from `phase`, `workflow`, and `auto_transition`:
-- `NEXT: auto` -> invoke the `SKILL` target to continue to the next phase
-- `NEXT: manual` -> do not invoke the next skill; follow `HINT` and ask the user to run `/<SKILL>` manually
-- `NEXT: done` -> workflow is complete; no further action needed
-
-Hotfix/tweak presets are controlled by their preset skills (phase goes directly to build), and their `next` output points to the preset path.
+Follow main skill "Shared Rules → Auto-Advance to Next Phase". Hotfix/tweak presets are controlled by their preset skills (phase goes directly to build), and their `next` output points to the preset path.

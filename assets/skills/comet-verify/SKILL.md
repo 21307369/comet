@@ -77,7 +77,7 @@ If commit range shows changes exceed lightweight threshold (> 4 files, cross-mod
 
 ### 1b. Verification Failure Decision (Blocking Point)
 
-When verification does not pass, **must use the current platform's available user input/confirmation mechanism to pause and wait for the user to decide whether to fix or accept the deviation**. Must not automatically run `"$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail`, nor automatically invoke `/comet-build`. If the current platform has no structured question tool, ask fix/accept-deviation options in the conversation, stop the workflow, and wait for the user's reply before continuing.
+When verification does not pass, follow main skill blocking point rule to pause for user decision on whether to fix or accept the deviation. Must not automatically run `"$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail`, nor automatically invoke `/comet-build`.
 
 When pausing, must list:
 - Failed items
@@ -90,7 +90,7 @@ After user selection, continue as follows:
 - **Fix all**: Run `"$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail`, then invoke `/comet-build` to fix
 - **Handle item by item**: CRITICAL failures must be fixed; non-CRITICAL failures may choose to accept deviation, but must record acceptance reason and impact scope in verification report. If any CRITICAL failure exists, skipping fix to accept all is not allowed
 
-**Retry limit**: After 3 consecutive verify-fail cycles, on the 4th failure the agent must not automatically choose to continue fixing; **must use the current platform's available user input/confirmation mechanism to pause** with only two options: "Accept all deviations and record" or "Continue fixing", for the user to explicitly decide.
+**Retry limit**: After 3 consecutive verify-fail cycles, on the 4th failure the agent must not automatically choose to continue fixing; follow main skill blocking point rule to pause with only two options: "Accept all deviations and record" or "Continue fixing", for the user to explicitly decide.
 
 ### 2. Artifact Context Loading (Hash On-Demand Read)
 
@@ -160,7 +160,7 @@ When verification does not pass: report missing items, enter Step 1b verificatio
 ```
 
 **Spec Drift Handling** (user decision point):
-- If check item 6 finds contradictions (delta spec has content but design doc does not reflect it), **must use the current platform's available user input/confirmation mechanism as a single-select question to pause and wait for the user to choose the handling method**; must not select automatically. Options:
+- If check item 6 finds contradictions (delta spec has content but design doc does not reflect it), follow main skill blocking point rule as a single-select question to pause for user choice of the handling method; must not select automatically. Options:
   - Option A: Append "Implementation Divergence" section to design doc recording deviation reason. Option A is a verify phase allowed artifact; after writing, must not re-trigger Step 1b dirty-worktree decision due to that design doc change
   - Option B: After user selects B, run `"$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail`, then invoke `/comet-build`; `/comet-build`'s Spec Incremental Update rules will load the Superpowers `brainstorming` skill to update Design Doc + delta spec
   - Option C: Confirm deviation is acceptable, continue verification (design doc will be marked as `superseded-by-main-spec` during archiving)
@@ -177,7 +177,7 @@ After the skill loads, follow its guidance to finish. Branch handling options:
 3. Keep branch (handle later)
 4. Discard work
 
-This is a user decision point. **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to choose branch handling method**. Must not select based on recommendations, defaults, or current branch status. If the current platform has no structured question tool, ask branch-handling options in the conversation, stop the workflow, and wait for the user's reply before continuing. Only after the user completes selection and the corresponding operation finishes, may `branch_status: handled` be written.
+This is a user decision point. Follow main skill blocking point rule to pause for user choice of branch handling method. Must not select based on recommendations, defaults, or current branch status. Only after the user completes selection and the corresponding operation finishes, may `branch_status: handled` be written.
 
 **Confirmation items**:
 - All tests pass
@@ -214,18 +214,7 @@ State file auto-updates to `phase: archive`, `verify_result: pass`, `verified_at
 
 ## Automatic Handoff to Next Phase
 
-> **Terminology distinction**: the "phase advancement" above is performed by guard `--apply`, which updates the `.comet.yaml` `phase` field. This step **always happens** and is not controlled by `auto_transition`. This section's "automatic handoff" only controls whether to automatically invoke the next skill.
-
-After verification and branch handling are complete, and guard-based phase advancement has completed, run:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-The script determines the next action from `phase`, `workflow`, and `auto_transition`:
-- `NEXT: auto` -> invoke the `SKILL` target to continue to the next phase
-- `NEXT: manual` -> do not invoke the next skill; follow `HINT` and ask the user to run `/<SKILL>` manually
-- `NEXT: done` -> workflow is complete; no further action needed
+Follow main skill "Shared Rules → Auto-Advance to Next Phase".
 
 Note: after `comet-archive` starts, it must first execute the final archive confirmation blocking point and wait for the user to explicitly choose "Confirm archive" before running the archive script. Must not automatically archive just because verification passed.
 

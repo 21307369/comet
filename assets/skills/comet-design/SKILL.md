@@ -129,13 +129,15 @@ After the skill loads, follow its guidance to produce design proposals (presente
 - Requirement/scope gaps and Spec Patches to be written back
 - If acceptance scenarios need supplementing, indicate delta spec changes to be written back
 
+Follow Product Convergence Principle (see Step 2 definition): read actual code first, write interface signatures/data structures as code, use pseudocode for implementation logic.
+
 The brainstorming phase does not write to the Design Doc file; it only produces design proposals for Step 1c user confirmation. Only after confirmation should `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` be created and delta spec written back.
 
 For context compaction recovery, the agent must incrementally update `brainstorm-summary.md` during brainstorming. After each clarification round or proposal iteration, update the file whenever new confirmed facts, key constraints, candidate approaches, trade-offs/risks, testing strategy, or Spec Patch candidates emerge; mark unconfirmed items as "pending" or "candidate". This file is a recovery checkpoint, not the Design Doc, and must not replace the Step 1c user confirmation.
 
 ### 1c. User Confirms Design Proposal (Blocking Point)
 
-After brainstorming produces a design proposal, **must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm the design proposal**. Must not create the final Design Doc, write `design_doc`, run design guard, or enter `/comet-build` before user confirmation. If the current platform has no structured question tool, ask a confirmation question in the conversation, stop the workflow, and wait for the user's reply before continuing.
+After brainstorming produces a design proposal, follow main skill blocking point rule to pause for explicit user confirmation of the design proposal.
 
 When pausing, only present essential summary:
 - Technical approach adopted
@@ -206,6 +208,8 @@ canonical_spec: openspec
 ---
 ```
 
+Follow Product Convergence Principle: read actual code first, write interface signatures/type definitions/data structures as code where needed, use pseudocode/logic descriptions for implementation logic.
+
 Write the Design Doc to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
 If Spec Patches need to be written back, also edit the corresponding `specs/*/spec.md`.
 
@@ -258,15 +262,4 @@ The script outputs structured recovery context (phase, completed fields, pending
 
 ## Automatic Handoff to Next Phase
 
-> **Terminology distinction**: the "phase advancement" above is performed by guard `--apply`, which updates the `.comet.yaml` `phase` field. This step **always happens** and is not controlled by `auto_transition`. This section's "automatic handoff" only controls whether to automatically invoke the next skill.
-
-After guard-based phase advancement, run:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-The script determines the next action from `phase`, `workflow`, and `auto_transition`:
-- `NEXT: auto` -> invoke the `SKILL` target to continue to the next phase
-- `NEXT: manual` -> do not invoke the next skill; follow `HINT` and ask the user to run `/<SKILL>` manually
-- `NEXT: done` -> workflow is complete; no further action needed
+Follow main skill "Shared Rules → Auto-Advance to Next Phase".

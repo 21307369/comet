@@ -35,7 +35,7 @@ fi
 
 ### 1. 归档前最终确认（阻塞点）
 
-入口验证通过后，**必须使用当前平台可用的用户输入/确认机制暂停并等待用户确认是否立即归档**。不得在用户确认前运行 `"$COMET_BASH" "$COMET_ARCHIVE" "<change-name>"`。若当前平台没有结构化提问工具，则在对话中提出同等单选问题并停止流程，等待用户回复后才能继续。
+入口验证通过后，按主 skill 阻塞点规则暂停等待用户确认是否立即归档。不得在用户确认前运行 `"$COMET_BASH" "$COMET_ARCHIVE" "<change-name>"`。
 
 确认前必须向用户展示简短摘要：
 - change 名称
@@ -74,7 +74,31 @@ fi
 
 如需预览而不实际执行，使用 `--dry-run` 参数。
 
-### 3. 生命周期闭环
+### 3. 更新设计目录（INDEX.md）
+
+归档完成后，必须更新 `docs/superpowers/INDEX.md` 以维护设计目录：
+
+1. **读取已归档 change 的元数据**：从 `openspec/changes/archive/YYYY-MM-DD-<name>/.comet.yaml` 读取：
+   - `design_doc` 字段：设计文档路径
+   - `plan` 字段：实施计划路径
+   - `created_at` 字段：创建日期（用作完成日期）
+
+2. **从「进行中」表格移除该 change**（如果存在）
+
+3. **在「已完成」表格新增一行**：
+   - 日期：归档日期（从归档目录名 YYYY-MM-DD 提取）
+   - 功能名称：从 change 的 `proposal.md` 标题或首个 heading 提取
+   - 设计文档：从 `docs/superpowers/` 开始的相对路径（如 `specs/2026-06-02-skill-management-design.md`）
+   - 计划文档：从 `docs/superpowers/` 开始的相对路径（如 `plans/2026-06-02-skill-management.md`）
+   - 关键词：初始 `conflict-check` 时使用的 3–5 个关键词（从 change 的 proposal.md 或 tasks.md 提取）
+
+4. **提交 INDEX.md 更新**，commit message：`docs: update design registry after archiving <change-name>`
+
+这确保未来的 `conflict-check` 能通过 INDEX.md 扫描找到已完成的设计。
+
+**跳过条件**：如果项目中不存在 `docs/superpowers/INDEX.md`，跳过此步骤（INDEX.md 是项目级约定，非硬性要求）。如果 change 不是完整流程（hotfix/tweak），跳过此步骤（只有完整流程才产出设计文档）。
+
+### 4. 生命周期闭环
 
 Spec 生命周期在此完成：
 ```

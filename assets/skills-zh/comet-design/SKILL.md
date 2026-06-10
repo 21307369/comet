@@ -129,13 +129,15 @@ canonical_spec: openspec
 - 需求/范围缺口与需回写的 Spec Patch
 - 如需补充验收场景，标明将回写的 delta spec 变更
 
+遵循产物收敛原则（见 Step 2 定义）：先读实际代码，接口签名/数据结构写代码，实现逻辑用伪代码。
+
 brainstorming 阶段不写入 Design Doc 文件，仅产出设计方案供 Step 1c 用户确认。确认后才创建 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` 并回写 delta spec。
 
 但为了上下文压缩恢复，brainstorming 过程中必须增量更新 `brainstorm-summary.md`。每轮澄清或方案迭代后，只要产生新的已确认事实、关键约束、候选方案、取舍/风险、测试策略或 Spec Patch 候选，就更新该文件；未确认内容必须标注为“待确认”或“候选”。该文件是恢复检查点，不是 Design Doc，也不得替代 Step 1c 的用户确认。
 
 ### 1c. 用户确认设计方案（阻塞点）
 
-brainstorming 产出设计方案后，**必须使用当前平台可用的用户输入/确认机制暂停并等待用户明确确认设计方案**。不得在用户确认前创建最终 Design Doc、写入 `design_doc`、运行 design guard，或进入 `/comet-build`。若当前平台没有结构化提问工具，则在对话中提出确认问题并停止流程，等待用户回复后才能继续。
+brainstorming 产出设计方案后，按主 skill 阻塞点规则暂停等待用户明确确认设计方案。
 
 暂停时只展示必要摘要：
 - 采用的技术方案
@@ -196,6 +198,8 @@ mkdir -p openspec/changes/<name>/.comet/handoff
 ### 2. 创建 Design Doc
 
 基于 brainstorming 对话的完整上下文（仍在主 session 中），创建 Design Doc。
+
+遵循产物收敛原则：先读实际代码，接口签名/类型定义/数据结构该写代码就写代码，实现逻辑用伪代码/逻辑描述。
 
 Design Doc frontmatter 必须最小化：
 
@@ -259,15 +263,4 @@ design 阶段在 brainstorming 过程中可能触发上下文压缩。恢复时�
 
 ## 自动衔接下一阶段
 
-> **术语区分**：上面的「阶段守卫推进」由 guard `--apply` 完成，更新 `.comet.yaml` 的 `phase` 字段——这一步**始终发生**，与 `auto_transition` 无关。本节的「自动衔接」只决定**是否自动调用下一个 skill**，由 `auto_transition` 控制。
-
-阶段守卫推进 phase 后，运行：
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-脚本根据 `phase`、`workflow`、`auto_transition` 输出确定性的下一步：
-- `NEXT: auto` → 调用 `SKILL` 指向的 skill 进入下一阶段
-- `NEXT: manual` → 不要调用下一 skill，按 `HINT` 提示用户手动运行 `/<SKILL>`
-- `NEXT: done` → 流程已完成，无需继续
+按主 skill「共享规则 → 自动衔接下一阶段」执行。

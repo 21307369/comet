@@ -46,6 +46,7 @@ You are an implementation planning expert. Create an implementation plan based o
 Plan requirements:
 - Save to `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`
 - Reference design document, break down into executable tasks
+- Follow Product Convergence Principle: read actual code first, tasks reference specific file paths and existing interfaces, write interface signatures as code, use pseudocode for implementation logic
 - **Plan file header must contain associated metadata**:
 
 ```yaml
@@ -87,7 +88,7 @@ After the plan is recorded, immediately provide a new user decision point:
 | A | Continue execution | Stay in the current model and proceed to Step 3 to choose workspace isolation and execution method |
 | B | Pause to switch model | Record `build_pause: plan-ready`, stop this `/comet-build` invocation, and allow the user to resume later from `/comet` or `/comet-build` |
 
-This is a user decision point. **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly choose**. Must not auto-continue and must not write the pause into `build_mode`. If the current platform has no structured question tool, ask equivalent options in the conversation, stop the workflow, and wait for the user's reply before continuing.
+This is a user decision point. Follow main skill blocking point rule to pause for explicit user choice. Must not auto-continue and must not write the pause into `build_mode`.
 
 When the user chooses to continue:
 
@@ -138,7 +139,7 @@ Plan has been written to the current branch. Before starting execution, **ask th
 - Task count ≤ 2 and no cross-module dependencies → Recommend B
 - From hotfix path → Recommend B
 
-This is a user decision point. **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly choose isolation method, execution method, and TDD mode**. Must not choose `branch` or `worktree` based on recommendation rules, and must not choose the execution method or TDD mode based on recommendation rules. Recommendation rules are for suggestion only, not a substitute for user confirmation. If the current platform has no structured question tool, ask equivalent options in the conversation, stop the workflow, and wait for the user's reply before continuing.
+This is a user decision point. Follow main skill blocking point rule to pause for explicit user choice of isolation method, execution method, and TDD mode. Must not choose based on recommendation rules. Recommendation rules are for suggestion only, not a substitute for user confirmation.
 
 After user selection, update `isolation`, execution method, and TDD mode fields:
 
@@ -176,7 +177,7 @@ Without `direct_override: true`, `build_mode=direct` in full workflow is blocked
 
 **Execute isolation**:
 
-- **branch**: Recommend a branch name based on the workflow type and current date, then let the user confirm or input a custom name. This is a user decision point — **must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm or override the branch name**. Must not skip this step and create the branch directly.
+- **branch**: Recommend a branch name based on the workflow type and current date, then let the user confirm or input a custom name. This is a user decision point — follow main skill blocking point rule to pause for explicit user confirmation or override of the branch name. Must not skip this step and create the branch directly.
 
   Branch naming convention:
   - Read the `workflow` field from `.comet.yaml` to determine the prefix
@@ -244,10 +245,10 @@ When the initial spec is found incomplete during implementation, handle by scale
 | Scale | Trigger Conditions | Approach |
 |------|-------------------|----------|
 | Small | Missing acceptance scenarios, edge cases | Directly edit delta spec + design.md, append tasks.md tasks |
-| Medium | Interface changes, new components, data flow changes | **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm**, then must use Skill tool to load the Superpowers `brainstorming` skill to update Design Doc + delta spec |
-| Large | Brand-new capability requirements | **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm the split**; after user confirms, create independent change through `/comet-open` |
+| Medium | Interface changes, new components, data flow changes | Follow main skill blocking point rule to pause for explicit user confirmation, then must use Skill tool to load the Superpowers `brainstorming` skill to update Design Doc + delta spec |
+| Large | Brand-new capability requirements | Follow main skill blocking point rule to pause for explicit user confirmation of the split; after user confirms, create independent change through `/comet-open` |
 
-**50% Threshold Determination**: Using initial task count in tasks.md as baseline, if new tasks exceed half of that total, it's considered outside original plan scope, **must use the current platform's available user input/confirmation mechanism to pause and wait for the user to decide whether to split into a new change**. If the current platform has no structured question tool, ask split options in the conversation, stop the workflow, and wait for the user's reply before continuing.
+**50% Threshold Determination**: Using initial task count in tasks.md as baseline, if new tasks exceed half of that total, it's considered outside original plan scope. Follow main skill blocking point rule to pause for user decision on whether to split into a new change.
 
 When creating an independent change, must invoke `/comet-open`, not `/opsx:new` directly. `/comet-open` creates both OpenSpec artifacts and `.comet.yaml`, preventing the new change from leaving the Comet state machine.
 
@@ -302,15 +303,4 @@ State file is automatically updated to `phase: verify`, `verify_result: pending`
 
 ## Automatic Handoff to Next Phase
 
-> **Terminology distinction**: the "phase advancement" above is performed by guard `--apply`, which updates the `.comet.yaml` `phase` field. This step **always happens** and is not controlled by `auto_transition`. This section's "automatic handoff" only controls whether to automatically invoke the next skill.
-
-After exit conditions are met and guard-based phase advancement has completed, run:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-The script determines the next action from `phase`, `workflow`, and `auto_transition`:
-- `NEXT: auto` -> invoke the `SKILL` target to continue to the next phase
-- `NEXT: manual` -> do not invoke the next skill; follow `HINT` and ask the user to run `/<SKILL>` manually
-- `NEXT: done` -> workflow is complete; no further action needed
+Follow main skill "Shared Rules → Auto-Advance to Next Phase".

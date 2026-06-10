@@ -119,7 +119,7 @@ Exception: when `.comet.yaml` has `auto_transition: false`, after each phase gua
 
 The following situations must pause and wait for user confirmation:
 
-1. Encountering upgrade conditions (see "Upgrade Conditions" section). **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm** upgrading to full workflow
+1. Encountering upgrade conditions (see "Upgrade Conditions" section). Follow main skill blocking point rule to pause for explicit user confirmation of upgrading to full workflow
 2. verify phase (comet-verify) verification-failure and branch-handling decisions
 3. Final archive confirmation (before comet-archive runs the archive script)
 
@@ -143,7 +143,7 @@ Upgrade to full `/comet` when **any** of the following conditions are met:
 | New capability needed | Exceeds local optimization |
 | Delta spec needed | Affects existing specs |
 
-When upgrade conditions are met, **must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm** upgrading to the full `/comet` workflow. Do not directly enter `/comet-design`, and do not automatically supplement Design Doc. If the current platform has no structured question tool, ask an upgrade confirmation question in the conversation, stop the workflow, and wait for the user's reply before continuing.
+When upgrade conditions are met, follow main skill blocking point rule to pause for explicit user confirmation of upgrading to the full `/comet` workflow. Do not directly enter `/comet-design`, and do not automatically supplement Design Doc.
 
 After user confirms upgrade, **must first update the workflow and phase fields** before entering full flow:
 
@@ -165,15 +165,4 @@ Then on current change basis, supplement Design Doc: **Immediately use the Skill
 
 ## Automatic Handoff to Next Phase
 
-> **Terminology distinction**: phase guard `--apply` advances the `.comet.yaml` `phase` field. This step **always happens** and is not controlled by `auto_transition`. This section's "automatic handoff" only controls whether to automatically invoke the next skill.
-
-After each phase guard or state transition advances phase, run:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <name>
-```
-
-The script determines the next action from `phase`, `workflow`, and `auto_transition`:
-- `NEXT: auto` -> invoke the `SKILL` target to continue the tweak flow (`phase: build` returns `comet-tweak`, `verify` returns `comet-verify`, `archive` returns `comet-archive`)
-- `NEXT: manual` -> do not invoke the next skill; follow `HINT` and ask the user to run `/<SKILL>` manually
-- `NEXT: done` -> workflow is complete; no further action needed
+Follow main skill "Shared Rules → Auto-Advance to Next Phase".
