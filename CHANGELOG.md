@@ -6,6 +6,10 @@ All notable changes to @rpamis/comet will be documented in this file.
 
 ### Added
 
+- **`comet-review-plan`**: 新增独立审查 skill，在 build 阶段 plan 生成后、执行前，通过全新 context 的子代理审查 spec 和 plan，打破同源性偏差（proposal → design → tasks → plan 由同一会话产出导致"一致地错但看起来自洽"的问题）。支持 `spec+plan`（默认）和 `plan-only` 两种模式，审查结果以 JSON 写入文件，最多 3 轮修复循环。集成到 `comet-build` Step 1b。
+
+- **INDEX.md 设计目录脚本化管理**: `comet-state.sh` 新增 `index-init`/`index-add`/`index-update`/`index-complete`/`index-clean-stale` 命令，将 INDEX.md 设计目录的读写从"agent 手动编辑 markdown"改为脚本命令驱动。`comet-guard.sh --apply` 阶段推进时自动同步 INDEX.md（open 阶段添加条目、design 阶段更新 design_doc 链接、build 阶段更新 plan 链接、archive 阶段移到已完成）。`conflict-check` 首次使用时自动初始化 INDEX.md 并清理 stale 条目。统一表格格式确保 `conflict-check` 脚本解析与写入一致。
+
 - **`comet update --source`**: `comet update` 命令新增 `--source <npm|github|local>` 选项，支持从 npm 包、GitHub 仓库或本地 fork 目录更新技能。适用于未发布到 npm 的 fork 项目。新增 `--repo <url>` 指定 GitHub 仓库，`--comet-path <path>` 指定本地 fork 根目录。
 
 - **Pi 扩展支持**: 新增 Pi 平台的原生扩展机制，`comet init` 现在会自动安装 `.pi/extensions/comet.ts`，为 Pi 提供 `/comet`、`/comet-hotfix`、`/comet-tweak`、`/comet-open`、`/comet-archive` 等命令，直接调用 Comet 工作流技能。

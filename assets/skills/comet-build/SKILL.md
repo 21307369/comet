@@ -71,6 +71,16 @@ After the subagent completes:
 - If a valid file path is returned and the file exists, record it as the plan
 - If the subagent fails or returns an invalid path, fall back to loading the Superpowers `writing-plans` skill inline in the main session (degraded fallback)
 
+### 1b. Independent Spec and Plan Review (Review Plan Gate)
+
+After plan generation and before the plan-ready pause point, the plan must pass an independent review subagent to check spec and plan quality. This step uses a **fresh-context subagent** to break same-source bias — in the original flow, proposal → design → tasks → plan are produced by the same session, making them "consistently wrong but internally consistent."
+
+**Immediately execute:** Use the Skill tool to load the `comet-review-plan` skill. Skipping this step is prohibited. If the skill is unavailable, skip the review gate but must record `<!-- review-plan skipped: skill unavailable -->` in tasks.md, then continue to Step 2.
+
+After the skill loads, follow `/comet-review-plan` guidance. Default mode is `spec+plan`. After review completes (pass or user accepts risk), continue to Step 2.
+
+**Degraded fallback**: If the current platform lacks subagent dispatch capability, follow `comet-review-plan`'s degraded handling (main session review, reduced independence).
+
 ### 2. Update Plan Status and Provide Plan-Ready Pause Point
 
 Record plan path:
@@ -80,6 +90,8 @@ Record plan path:
 ```
 
 No manual phase update needed — guard auto-transitions when exit conditions are met.
+
+**INDEX.md auto-sync**: When `guard --apply` advances the build phase, the script automatically calls `index-update` to write the `plan` link into the "In Progress" entry in INDEX.md. No manual INDEX.md editing required.
 
 After the plan is recorded, immediately provide a new user decision point:
 

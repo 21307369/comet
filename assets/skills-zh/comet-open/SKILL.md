@@ -102,7 +102,7 @@ COMET_ENV="${COMET_ENV:-$(find . "$HOME"/.*/skills "$HOME/.config" "$HOME/.gemin
 
 正常继续 Step 2。
 
-**创建 change 后**：必须更新 `docs/superpowers/INDEX.md`——将新 change 添加到「进行中」表格并标注关键词，以便未来冲突检查能发现它。
+**创建 change 后**：INDEX.md 由阶段守卫自动同步。当 `guard --apply` 推进 open 阶段时，脚本会自动调用 `index-add` 将新 change 添加到「进行中」表格。无需手动编辑 INDEX.md。
 
 ### 2. 创建 Change 结构 + 初始化状态
 

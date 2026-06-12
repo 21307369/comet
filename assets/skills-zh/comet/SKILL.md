@@ -159,6 +159,7 @@ agent 不应跳过这些决策点；其他明确无歧义的阶段衔接必须�
 | `/comet-archive` | 5. 归档 | OpenSpec | delta→main spec 同步、design doc 标注、归档 |
 | `/comet-hotfix` | 预设路径 | Both | 快速修复（跳过 brainstorming） |
 | `/comet-tweak` | 预设路径 | Both | 小改动（跳过 brainstorming 和完整 plan） |
+| `/comet-review-plan` | build 内嵌 | Both | 独立审查 spec 和 plan（打破同源性偏差） |
 
 ```
 /comet

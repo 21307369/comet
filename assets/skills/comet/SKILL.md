@@ -159,6 +159,7 @@ Agents should not skip these decision points; other unambiguous phase transition
 | `/comet-archive` | 5. Archive | OpenSpec | delta→main spec sync, design doc markup, archive |
 | `/comet-hotfix` | Preset path | Both | Quick fix (skip brainstorming) |
 | `/comet-tweak` | Preset path | Both | Small change (skip brainstorming and full plan) |
+| `/comet-review-plan` | Build-internal | Both | Independent spec and plan review (break same-source bias) |
 
 ```
 /comet

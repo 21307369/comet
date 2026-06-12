@@ -76,23 +76,18 @@ Use `--dry-run` flag to preview without executing.
 
 ### 3. Update Design Registry (INDEX.md)
 
-After successful archive, must update `docs/superpowers/INDEX.md` to maintain the design registry:
+After successful archive, run the script command to move the change from "In Progress" to "Completed":
 
-1. **Read the archived change metadata** from `openspec/changes/archive/YYYY-MM-DD-<name>/.comet.yaml`:
-   - `design_doc` field: path to the design document
-   - `plan` field: path to the plan document
-   - `created_at` field: creation date (use as completion date)
+```bash
+"$COMET_BASH" "$COMET_STATE" index-complete <change-name>
+```
 
-2. **Remove the change from the "In Progress" table** in `docs/superpowers/INDEX.md` (if it exists there)
+The script will automatically:
+- Find and remove the change entry from the "In Progress" table
+- Add a new row to the "Completed" table (date is the archive date)
+- Preserve the existing design_doc, plan links, and keywords
 
-3. **Add a new row to the "Completed" table** with:
-   - Date: archive date (YYYY-MM-DD from the archive directory name)
-   - Feature name: extract from the change's `proposal.md` title or first heading
-   - Design doc: relative path from `docs/superpowers/` (e.g., `specs/2026-06-02-skill-management-design.md`)
-   - Plan doc: relative path from `docs/superpowers/` (e.g., `plans/2026-06-02-skill-management.md`)
-   - Keywords: the same 3–5 keywords used in the initial `conflict-check` (extract from the change's proposal.md or tasks.md)
-
-4. **Commit the INDEX.md update** with message: `docs: update design registry after archiving <change-name>`
+Then commit the INDEX.md update with message: `docs: update design registry after archiving <change-name>`
 
 This ensures future `conflict-check` executions can find the completed design via INDEX.md scanning.
 

@@ -71,6 +71,16 @@ Subagent 完成后：
 - 若返回有效文件路径且文件存在，记录为 plan
 - 若 subagent 失败或返回路径无效，在主 session 内联加载 Superpowers `writing-plans` 技能创建计划（降级回退）
 
+### 1b. 独立审查 Spec 和 Plan（Review Plan Gate）
+
+Plan 生成后、进入 plan-ready 暂停点前，必须通过独立审查子代理检查 spec 和 plan 的质量。此步骤通过**全新 context 的子代理**打破同源性偏差——原流程中 proposal → design → tasks → plan 由同一会话产出，容易"一致地错但看起来自洽"。
+
+**立即执行：** 使用 Skill 工具加载 `comet-review-plan` 技能。禁止跳过此步骤。若该技能不可用，跳过审查 gate 但必须在 tasks.md 中记录 `<!-- review-plan skipped: skill unavailable -->`，然后继续 Step 2。
+
+技能加载后，按 `/comet-review-plan` 的指引执行审查。默认使用 `spec+plan` 模式。审查完成后（pass 或用户选择接受风险），继续 Step 2。
+
+**降级处理**：若当前平台无 subagent 调度能力，按 `comet-review-plan` 的降级处理执行（主会话内审查，独立性降低）。
+
 ### 2. 更新计划状态并提供 plan-ready 暂停点
 
 先记录 plan 路径：
@@ -80,6 +90,8 @@ Subagent 完成后：
 ```
 
 无需手动更新 phase，阶段守卫（guard `--apply`）会在退出条件满足后推进 `phase` 字段。
+
+**INDEX.md 自动同步**：`guard --apply` 推进 build 阶段时，脚本会自动调用 `index-update` 将 `plan` 链接写入 INDEX.md 的「进行中」条目。无需手动编辑 INDEX.md。
 
 计划写入后，立即提供一个新的用户决策点：
 

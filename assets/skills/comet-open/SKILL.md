@@ -102,7 +102,7 @@ Must not create proposal.md, design.md, or tasks.md until the user completes the
 
 Proceed to Step 2 normally.
 
-**After creating the change**: must update `docs/superpowers/INDEX.md` — add the new change to the "In Progress" table with keywords, so future conflict checks can find it.
+**After creating the change**: INDEX.md is automatically synced by the phase guard. When `guard --apply` advances the open phase, the script automatically calls `index-add` to add the new change to the "In Progress" table. No manual INDEX.md editing required.
 
 ### 2. Create Change Structure + Initialize State
 

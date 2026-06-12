@@ -233,6 +233,8 @@ canonical_spec: openspec
 
 如果没有 delta spec 变更，跳过 handoff 重新生成步骤。状态文件自动更新，无需手动编辑其他字段。
 
+**INDEX.md 自动同步**：`guard --apply` 推进 design 阶段时，脚本会自动调用 `index-update` 将 `design_doc` 链接写入 INDEX.md 的「进行中」条目。无需手动编辑 INDEX.md。
+
 ## 退出条件
 
 - Design Doc 已创建并保存

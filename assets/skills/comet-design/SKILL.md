@@ -232,6 +232,8 @@ First record the design_doc path. If Spec Patches wrote back delta spec (added o
 
 If there are no delta spec changes, skip the handoff regeneration step. The state file updates automatically; no manual editing of other fields needed.
 
+**INDEX.md auto-sync**: When `guard --apply` advances the design phase, the script automatically calls `index-update` to write the `design_doc` link into the "In Progress" entry in INDEX.md. No manual INDEX.md editing required.
+
 ## Exit Conditions
 
 - Design Doc created and saved
