@@ -758,8 +758,7 @@ sync_index_registry() {
       # No INDEX update needed for verify phase
       ;;
     archive)
-      # Move entry from "In Progress" to "Completed"
-      "$COMET_BASH" "$state_sh" index-complete "$CHANGE" || warn "INDEX index-complete failed for $CHANGE"
+      # No INDEX update here — comet-archive.sh Step 7b handles index-complete
       ;;
   esac
 }
