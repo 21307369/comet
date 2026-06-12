@@ -10,9 +10,6 @@
 <p align="center">
   <a href="https://github.com/21307369/comet/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/21307369/comet/ci.yml?branch=master&style=flat-square&label=CI" /></a>
   <a href="https://deepwiki.com/21307369/comet"><img alt="DeepWiki" src="https://img.shields.io/badge/DeepWiki-21307369%2Fcomet-blue?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/@21307369/comet"><img alt="npm version" src="https://img.shields.io/npm/v/@21307369/comet?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/@21307369/comet"><img alt="npm download count" src="https://img.shields.io/npm/dm/@21307369/comet?style=flat-square&label=Downloads/mo" /></a>
-  <a href="https://www.npmjs.com/package/@21307369/comet"><img alt="npm weekly download count" src="https://img.shields.io/npm/dw/@21307369/comet?style=flat-square&label=Downloads/wk" /></a>
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" /></a>
 </p>
 
@@ -29,7 +26,6 @@
 
 > 中文版：[README-zh.md](README-zh.md)
 > [Bilibili video](https://www.bilibili.com/video/BV1y4Gi6CEo1/?spm_id_from=333.1387.homepage.video_card.click&vd_source=d22726fe6b108647dbebf1c5d8817377)
-> [DouYin](https://www.douyin.com/search/comet?aid=cd8fcc82-498b-4d59-8860-617deb719412&modal_id=7646429015808936293&type=general)
 
 **OpenSpec + Superpowers dual-star development workflow** — one command from idea to archive.
 
@@ -120,6 +116,16 @@ Requirements:
 
 ```bash
 npm install -g github:21307369/comet
+```
+
+### Development (Local)
+
+```bash
+git clone https://github.com/21307369/comet.git
+cd comet
+pnpm install
+pnpm build
+pnpm link --global
 ```
 
 ## Quick Start

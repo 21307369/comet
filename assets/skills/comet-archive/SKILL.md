@@ -76,20 +76,15 @@ Use `--dry-run` flag to preview without executing.
 
 ### 3. Update Design Registry (INDEX.md)
 
-After successful archive, run the script command to move the change from "In Progress" to "Completed":
+The archive script (Step 7b) automatically moves the change from "In Progress" to "Completed" in INDEX.md for full workflow changes. No manual action is needed.
+
+**Fallback**: If the automatic step fails (check for `WARNING: Failed to update INDEX.md` in the script output), run manually:
 
 ```bash
 "$COMET_BASH" "$COMET_STATE" index-complete <change-name>
 ```
 
-The script will automatically:
-- Find and remove the change entry from the "In Progress" table
-- Add a new row to the "Completed" table (date is the archive date)
-- Preserve the existing design_doc, plan links, and keywords
-
 Then commit the INDEX.md update with message: `docs: update design registry after archiving <change-name>`
-
-This ensures future `conflict-check` executions can find the completed design via INDEX.md scanning.
 
 **Skip conditions**: If `docs/superpowers/INDEX.md` does not exist in the project, skip this step (INDEX.md is a project-level convention, not a hard requirement). If the change was not a full workflow (hotfix/tweak), skip this step (only full workflow changes produce design docs).
 

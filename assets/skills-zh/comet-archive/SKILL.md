@@ -76,20 +76,15 @@ fi
 
 ### 3. 更新设计目录（INDEX.md）
 
-归档完成后，运行脚本命令将 change 从「进行中」移到「已完成」：
+归档脚本（Step 7b）会自动将完整流程的 change 从「进行中」移到「已完成」。无需手动操作。
+
+**兜底**：如果自动步骤失败（检查脚本输出中的 `WARNING: Failed to update INDEX.md`），手动执行：
 
 ```bash
 "$COMET_BASH" "$COMET_STATE" index-complete <change-name>
 ```
 
-脚本会自动：
-- 从「进行中」表格找到并移除该 change 条目
-- 在「已完成」表格新增一行（日期为归档日期）
-- 保留原有的 design_doc、plan 链接和关键词
-
 然后提交 INDEX.md 更新，commit message：`docs: update design registry after archiving <change-name>`
-
-这确保未来的 `conflict-check` 能通过 INDEX.md 扫描找到已完成的设计。
 
 **跳过条件**：如果项目中不存在 `docs/superpowers/INDEX.md`，跳过此步骤（INDEX.md 是项目级约定，非硬性要求）。如果 change 不是完整流程（hotfix/tweak），跳过此步骤（只有完整流程才产出设计文档）。
 

@@ -3777,6 +3777,51 @@ describeShell('comet shell scripts', () => {
       expect(indexContent).toContain('Auto Sync Feature');
     }, 20_000);
 
+    it('guard --apply archive moves INDEX entry to Completed', async () => {
+      await createChange(
+        tmpDir,
+        'archive-sync',
+        [
+          'workflow: full',
+          'phase: archive',
+          'build_mode: null',
+          'build_pause: null',
+          'tdd_mode: null',
+          'isolation: null',
+          'verify_mode: null',
+          'design_doc: null',
+          'plan: null',
+          'verify_result: pass',
+          'verified_at: null',
+          'archived: true',
+          '',
+        ].join('\n'),
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'archive-sync', 'proposal.md'),
+        '# Archive Sync Feature\n',
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'archive-sync', 'design.md'),
+        '# Design\n',
+      );
+      // Pre-add entry to In Progress
+      runBash(tmpDir, stateScript, ['index-add', 'archive-sync', 'archive']);
+
+      const result = runBash(tmpDir, guardScript, ['archive-sync', 'archive', '--apply']);
+
+      expect(result.status).toBe(0);
+      const indexContent = await fs.readFile(
+        path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
+        'utf-8',
+      );
+      // Entry should be in Completed section, not In Progress
+      const completedSection = indexContent.split('## Completed')[1] || '';
+      expect(completedSection).toContain('Archive Sync Feature');
+      const inProgressSection = indexContent.split('## In Progress')[1]?.split('## ')[0] || '';
+      expect(inProgressSection).not.toContain('Archive Sync Feature');
+    }, 20_000);
+
     it('guard --apply skips INDEX.md sync for hotfix workflow', async () => {
       await createChange(
         tmpDir,

@@ -720,6 +720,11 @@ sync_index_registry() {
   # Only full workflow produces design docs that need INDEX tracking
   [ "$workflow" = "full" ] || return 0
 
+  # Ensure INDEX.md exists before any index operation
+  if [ ! -f "docs/superpowers/INDEX.md" ]; then
+    "$COMET_BASH" "$state_sh" index-init || warn "INDEX init failed"
+  fi
+
   case "$p" in
     open)
       # Extract keywords from proposal.md (first heading + key terms)
@@ -731,14 +736,14 @@ sync_index_registry() {
           awk '{for(i=1;i<=NF && i<=3;i++) printf "%s ", tolower($i)}' | \
           sed 's/[^a-z0-9 ]//g' | awk '{print $1, $2, $3}' || true)
       fi
-      "$COMET_BASH" "$state_sh" index-add "$CHANGE" $keywords 2>/dev/null || true
+      "$COMET_BASH" "$state_sh" index-add "$CHANGE" $keywords || warn "INDEX index-add failed for $CHANGE"
       ;;
     design)
       # Update design_doc link
       local design_doc
       design_doc=$(yaml_field_value "design_doc" 2>/dev/null || true)
       if [ -n "$design_doc" ] && [ "$design_doc" != "null" ]; then
-        "$COMET_BASH" "$state_sh" index-update "$CHANGE" design_doc "$design_doc" 2>/dev/null || true
+        "$COMET_BASH" "$state_sh" index-update "$CHANGE" design_doc "$design_doc" || warn "INDEX index-update design_doc failed for $CHANGE"
       fi
       ;;
     build)
@@ -746,11 +751,15 @@ sync_index_registry() {
       local plan
       plan=$(yaml_field_value "plan" 2>/dev/null || true)
       if [ -n "$plan" ] && [ "$plan" != "null" ]; then
-        "$COMET_BASH" "$state_sh" index-update "$CHANGE" plan "$plan" 2>/dev/null || true
+        "$COMET_BASH" "$state_sh" index-update "$CHANGE" plan "$plan" || warn "INDEX index-update plan failed for $CHANGE"
       fi
       ;;
     verify)
       # No INDEX update needed for verify phase
+      ;;
+    archive)
+      # Move entry from "In Progress" to "Completed"
+      "$COMET_BASH" "$state_sh" index-complete "$CHANGE" || warn "INDEX index-complete failed for $CHANGE"
       ;;
   esac
 }
