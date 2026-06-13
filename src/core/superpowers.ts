@@ -24,7 +24,7 @@ const SKILLS_AGENT_MAP: Record<string, string | null> = {
   auggie: 'augment',
   kiro: 'kiro-cli',
   kimicode: 'kimi-code-cli',
-  lingma: null,
+  lingma: 'lingma',
   junie: 'junie',
   codebuddy: 'codebuddy',
   costrict: 'universal',
@@ -41,6 +41,7 @@ const SKILLS_AGENT_MAP: Record<string, string | null> = {
 
 const VALID_PLATFORM_IDS = new Set(Object.keys(SKILLS_AGENT_MAP));
 const SUPERPOWERS_INSTALL_TIMEOUT_MS = 300_000;
+const SUPERPOWERS_SOURCE = '21307369/superpowers-zh';
 const LINGMA_PLATFORM_ID = 'lingma';
 const LINGMA_STAGE_AGENT = 'claude-code';
 
@@ -64,7 +65,7 @@ function buildSuperpowersInstallCommand(
     throw new Error(`No skills CLI agent names resolved for platforms: ${platformIds.join(', ')}`);
   }
 
-  const args = ['skills', 'add', 'obra/superpowers', '-y'];
+  const args = ['skills', 'add', SUPERPOWERS_SOURCE, '-y'];
   if (scope === 'global') {
     args.push('-g');
   }
@@ -77,7 +78,7 @@ function buildSuperpowersInstallCommand(
 function buildLingmaSuperpowersStageCommand(): { command: string; args: string[] } {
   return {
     command: getNpxExecutable(),
-    args: ['skills', 'add', 'obra/superpowers', '-y', '--agent', LINGMA_STAGE_AGENT],
+    args: ['skills', 'add', SUPERPOWERS_SOURCE, '-y', '--agent', LINGMA_STAGE_AGENT],
   };
 }
 
@@ -145,7 +146,9 @@ async function installSuperpowersForPlatforms(
     throw new Error(`Unknown platform IDs: ${unknownIds.join(', ')}`);
   }
 
-  const skillsCliPlatformIds = platformIds.filter((id) => SKILLS_AGENT_MAP[id]);
+  const skillsCliPlatformIds = platformIds.filter(
+    (id) => id !== LINGMA_PLATFORM_ID && SKILLS_AGENT_MAP[id],
+  );
   const shouldInstallLingma = platformIds.includes(LINGMA_PLATFORM_ID);
   let failed = false;
 
