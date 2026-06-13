@@ -23,7 +23,7 @@ describe('superpowers', () => {
       expect(SKILLS_AGENT_MAP['claude']).toBe('claude-code');
     });
 
-    it('maps cursor unchanged', async () => {
+    it('maps cursor to cursor', async () => {
       const { SKILLS_AGENT_MAP } = await import('../../src/core/superpowers.js');
       expect(SKILLS_AGENT_MAP['cursor']).toBe('cursor');
     });
@@ -43,7 +43,7 @@ describe('superpowers', () => {
       expect(SKILLS_AGENT_MAP['auggie']).toBe('augment');
     });
 
-    it('maps forgecode unchanged', async () => {
+    it('maps forgecode to forgecode', async () => {
       const { SKILLS_AGENT_MAP } = await import('../../src/core/superpowers.js');
       expect(SKILLS_AGENT_MAP['forgecode']).toBe('forgecode');
     });
@@ -58,7 +58,12 @@ describe('superpowers', () => {
       expect(SKILLS_AGENT_MAP['factory']).toBe('droid');
       expect(SKILLS_AGENT_MAP['amazon-q']).toBe('universal');
       expect(SKILLS_AGENT_MAP['costrict']).toBe('universal');
-      expect(SKILLS_AGENT_MAP['lingma']).toBeNull();
+      expect(SKILLS_AGENT_MAP['pi']).toBe('pi');
+      expect(SKILLS_AGENT_MAP['lingma']).toBe('lingma');
+      expect(SKILLS_AGENT_MAP['antigravity']).toBe('antigravity');
+      expect(SKILLS_AGENT_MAP['trae']).toBe('trae');
+      expect(SKILLS_AGENT_MAP['cline']).toBe('cline');
+      expect(SKILLS_AGENT_MAP['bob']).toBe('bob');
     });
 
     it('has entries for all 29 platforms', async () => {
@@ -99,6 +104,14 @@ describe('superpowers', () => {
       }
       expect(Object.keys(SKILLS_AGENT_MAP)).toHaveLength(29);
     });
+
+    it('all 29 platforms have non-null agent names', async () => {
+      const { SKILLS_AGENT_MAP } = await import('../../src/core/superpowers.js');
+      const nullPlatforms = Object.entries(SKILLS_AGENT_MAP)
+        .filter(([, v]) => v === null)
+        .map(([k]) => k);
+      expect(nullPlatforms).toEqual([]);
+    });
   });
 
   describe('installSuperpowersForPlatforms', () => {
@@ -117,7 +130,7 @@ describe('superpowers', () => {
       expect(command).toBe(process.platform === 'win32' ? 'npx.cmd' : 'npx');
       expect(args).toContain('skills');
       expect(args).toContain('add');
-      expect(args).toContain('obra/superpowers');
+      expect(args).toContain('21307369/superpowers-zh');
       expect(args).toContain('-y');
       expect(args).toContain('--agent');
       expect(args).toContain('claude-code');
@@ -132,18 +145,20 @@ describe('superpowers', () => {
         buildSuperpowersInstallCommand('/tmp/test', 'project', ['claude', 'cursor']),
       ).toEqual({
         command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-        args: ['skills', 'add', 'obra/superpowers', '-y', '--agent', 'claude-code', '--agent', 'cursor'],
+        args: ['skills', 'add', '21307369/superpowers-zh', '-y', '--agent', 'claude-code', '--agent', 'cursor'],
       });
     });
 
-    it('excludes Lingma from the skills CLI command because skills@1.5.7 does not support it', async () => {
+    it('excludes Lingma from the skills CLI command because Lingma uses staging path', async () => {
       const { buildSuperpowersInstallCommand } = await import('../../src/core/superpowers.js');
 
+      // Lingma has a non-null agent name but is filtered out at the caller level.
+      // buildSuperpowersInstallCommand itself includes all non-null agents.
       expect(
         buildSuperpowersInstallCommand('/tmp/test', 'project', ['claude', 'lingma']),
       ).toEqual({
         command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-        args: ['skills', 'add', 'obra/superpowers', '-y', '--agent', 'claude-code'],
+        args: ['skills', 'add', '21307369/superpowers-zh', '-y', '--agent', 'claude-code', '--agent', 'lingma'],
       });
     });
 
@@ -152,7 +167,7 @@ describe('superpowers', () => {
 
       expect(buildLingmaSuperpowersStageCommand()).toEqual({
         command: process.platform === 'win32' ? 'npx.cmd' : 'npx',
-        args: ['skills', 'add', 'obra/superpowers', '-y', '--agent', 'claude-code'],
+        args: ['skills', 'add', '21307369/superpowers-zh', '-y', '--agent', 'claude-code'],
       });
     });
 
