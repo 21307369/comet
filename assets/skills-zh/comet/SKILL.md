@@ -120,7 +120,7 @@ agent 做决策只需读本节，参考附录按需查阅。
 
 **阶段推进与自动衔接的区分**：每个子 skill 退出前都会运行阶段守卫 `--apply` 推进 `.comet.yaml` 的 `phase` 字段——这一步**始终发生**，与 `auto_transition` 无关。之后子 skill 运行 `"$COMET_BASH" "$COMET_STATE" next <name>` 解析下一步：`auto_transition` 不为 `false` 时输出 `NEXT: auto`（自动调用下一 skill），为 `false` 时输出 `NEXT: manual`（不调用下一 skill，提示用户手动运行）。因此 `auto_transition` **只控制是否自动调用下一个 skill，不影响 phase 推进**。无论 `auto_transition` 取何值，下方的用户决策点都必须阻塞等待。
 
-**决策点是阻塞点**：只要到达下列任一节点，当前 `/comet` 调用必须停住，**使用当前平台可用的用户输入/确认机制等待用户选择**。若当前平台没有结构化提问工具，则必须在对话中提出明确选项并停止流程，等待用户回复后才能继续。用户明确选择后才能写入对应状态字段、执行对应操作，随后再继续自动流转。
+**决策点是阻塞点**：只要到达下列任一节点，当前 `/comet` 调用必须停住，并按 `comet/reference/decision-point.md` 的协议获取用户明确选择。用户明确选择后才能写入对应状态字段、执行对应操作，随后再继续自动流转。
 
 需要用户参与的节点（仅在这些节点暂停）：
 1. open 阶段 proposal/design/tasks 审视确认
@@ -159,7 +159,7 @@ agent 不应跳过这些决策点；其他明确无歧义的阶段衔接必须�
 | `/comet-archive` | 5. 归档 | OpenSpec | delta→main spec 同步、design doc 标注、归档 |
 | `/comet-hotfix` | 预设路径 | Both | 快速修复（跳过 brainstorming） |
 | `/comet-tweak` | 预设路径 | Both | 小改动（跳过 brainstorming 和完整 plan） |
-| `/comet-review-plan` | build 内嵌 | Both | 独立审查 spec 和 plan（打破同源性偏差） |
+| `/comet-review-plan` | 构建内嵌 | Both | 独立审查 spec 和 plan（打破同源性偏差） |
 
 ```
 /comet
@@ -178,87 +178,18 @@ agent 不应跳过这些决策点；其他明确无歧义的阶段衔接必须�
 
 ---
 
-## 共享规则（子 skill 引用）
-
-以下规则为所有子 skill 的权威定义。子 skill 中标注「按主 skill 共享规则处理」的位置，均引用本节定义。
-
-### 阻塞点规则
-
-凡子 skill 标注为「阻塞点」的节点，必须执行以下行为：
-
-1. **暂停**：使用当前平台可用的用户输入/确认机制暂停并等待用户明确选择
-2. **不得先行**：不得在用户确认前执行被阻塞的后续操作（如阶段守卫、自动流转、产物创建）
-3. **无工具回退**：若当前平台没有结构化提问工具，则在对话中提出明确选项并停止流程，等待用户回复后才能继续
-4. **不得推断同意**：用户未明确选择 ≠ 同意，不得用推荐规则、默认值或历史偏好代替
-
-### 自动衔接下一阶段
-
-子 skill 退出条件满足后，按以下流程衔接：
-
-1. **阶段守卫推进**：运行 `"$COMET_BASH" "$COMET_GUARD" <change-name> <phase> --apply` 推进 `.comet.yaml` 的 `phase` 字段——此步**始终发生**，与 `auto_transition` 无关
-2. **解析下一步**：运行 `"$COMET_BASH" "$COMET_STATE" next <change-name>`，按输出决定：
-   - `NEXT: auto` → 调用 `SKILL` 指向的 skill 进入下一阶段
-   - `NEXT: manual` → 不调用下一 skill，按 `HINT` 提示用户手动运行 `/<SKILL>`
-   - `NEXT: done` → 流程已完成，无需继续
-
-> `auto_transition` 只控制是否自动调用下一 skill，不影响 phase 推进。
-
----
-
 ## 参考附录（Reference Appendix）
 
-### .comet.yaml 字段说明
+> 字段说明、文件结构和自动衔接协议已提取为渐进式加载参考文档，按需查阅：
+> - **`.comet.yaml` 完整字段表**：按 `comet/reference/comet-yaml-fields.md` 查阅（含必需字段、可选字段和完整示例）
+> - **文件结构**：按 `comet/reference/file-structure.md` 查阅
+> - **自动衔接协议**：按 `comet/reference/auto-transition.md` 查阅
+> - **上下文压缩恢复**：按 `comet/reference/context-recovery.md` 查阅
+> - **用户决策点协议**：按 `comet/reference/decision-point.md` 查阅
+> - **调试门协议**：按 `comet/reference/debug-gate.md` 查阅
 
-```yaml
-workflow: full
-phase: build
-design_doc: docs/superpowers/specs/YYYY-MM-DD-topic-design.md
-plan: docs/superpowers/plans/YYYY-MM-DD-feature.md
-base_ref: a1b2c3d4e5f6...
-build_mode: subagent-driven-development
-build_pause: null
-subagent_dispatch: confirmed
-tdd_mode: tdd
-isolation: branch
-verify_mode: light
-verify_result: pending
-verification_report: null
-branch_status: pending
-created_at: 2026-05-26
-verified_at: null
-archived: false
-```
+### 状态机硬约束
 
-| 字段 | 含义 |
-|------|------|
-| `workflow` | `full`、`hotfix` 或 `tweak` |
-| `phase` | 当前阶段：`open`、`design`、`build`、`verify`、`archive`（init 统一设为 `open`，guard 负责过渡） |
-| `design_doc` | 关联的 Superpowers Design Doc 路径，可为空 |
-| `plan` | 关联的 Superpowers Plan 路径，可为空 |
-| `base_ref` | init 时记录的 git commit SHA，用于 scale 评估。无 plan 时作为改动文件数统计基准 |
-| `build_mode` | 已选择的执行方式，可为空 |
-| `build_pause` | build 阶段内部暂停点。`null` 表示无暂停，`plan-ready` 表示 plan 已生成，用户选择切换模型后暂停 |
-| `subagent_dispatch` | `null` 或 `confirmed`。仅当已确认当前平台存在真实后台 subagent / Task / multi-agent 调度能力时，`build_mode: subagent-driven-development` 才能写入并用于离开 build 阶段 |
-| `tdd_mode` | `tdd` 或 `direct`。full workflow 离开 build 阶段前必须已选择。`tdd` 强制每个任务先写失败测试再实现；`direct` 不强制 TDD。hotfix/tweak 默认 `direct` |
-| `isolation` | `branch` 或 `worktree`，工作区隔离方式。full 初始化可为 `null`，但只允许持续到 `/comet-build` Step 3 前；hotfix/tweak 默认 `branch` |
-| `verify_mode` | `light` 或 `full`，可为空 |
-| `auto_transition` | `true` 或 `false`。只控制阶段守卫推进 phase 后是否自动调用下一个 skill；`false` 时由 `comet-state next` 输出 `manual`，暂停下一 skill 调用，但不阻止 phase 字段更新 |
-| `verify_result` | `pending`、`pass` 或 `fail` |
-| `verification_report` | 验证报告文件路径，verify 通过前必须指向已存在文件 |
-| `branch_status` | `pending` 或 `handled`，分支处理完成后设为 `handled` |
-| `created_at` | change 创建日期（init 时自动写入），格式 `YYYY-MM-DD` |
-| `verified_at` | 验证通过时间，可为空 |
-| `archived` | change 是否已归档 |
-
-可选字段：
-
-| 字段 | 含义 |
-|------|------|
-| `direct_override` | `true`/`false`。full workflow 如需使用 `build_mode: direct`，必须显式设为 `true` |
-| `build_command` | 项目构建命令。guard 优先运行该命令，失败时打印命令输出 |
-| `verify_command` | 项目验证命令。verify guard 优先运行该命令，未配置时回退到构建命令 |
-
-状态机硬约束：
 - `build → verify` 前，`isolation` 必须是 `branch` 或 `worktree`
 - `build → verify` 前，`build_mode` 必须已选择
 - `build_mode: subagent-driven-development` 必须同时有 `subagent_dispatch: confirmed`
@@ -322,28 +253,7 @@ fi
 
 ### 文件结构
 
-```
-openspec/                              # OpenSpec — WHAT
-├── config.yaml
-├── changes/
-│   ├── <name>/                        # 活跃 change
-│   │   ├── .openspec.yaml
-│   │   ├── .comet.yaml
-│   │   ├── proposal.md                # Why + What
-│   │   ├── design.md                  # 高层架构决策
-│   │   ├── specs/<capability>/spec.md # Delta 能力规格
-│   │   ├── .comet/handoff/            # 脚本生成的阶段交接包
-│   │   └── tasks.md                   # 任务清单
-│   └── archive/YYYY-MM-DD-<name>/     # 已归档
-└── specs/<capability>/spec.md         # 主 specs（归档时按 OpenSpec delta 语义合并）
-
-docs/superpowers/                      # Superpowers — HOW
-├── specs/YYYY-MM-DD-<topic>-design.md # 设计文档（技术 RFC，归档时标注状态）
-└── plans/YYYY-MM-DD-<feature>.md      # 实施计划（文件头含 change 关联元数据）
-
-.comet/
-└── config.yaml                        # Comet 项目配置（context_compression 默认 off，可设 beta）
-```
+按 `comet/reference/file-structure.md` 查阅完整目录结构。
 
 ### 最佳实践
 

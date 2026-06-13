@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
@@ -136,10 +136,15 @@ describe('detect', () => {
       expect(opencode).toBeDefined();
       if (!opencode) return;
 
+      // Mock homedir to isolate from global state
+      const homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(tmpDir);
+
       await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'comet'), { recursive: true });
       await fs.mkdir(path.join(tmpDir, '.opencode', 'skills', 'comet-open'), { recursive: true });
 
       expect(await hasSkills(tmpDir, opencode, 'comet')).toBe(false);
+      
+      homedirSpy.mockRestore();
     });
 
     it('detects OpenCode Comet skills when matching slash commands exist', async () => {

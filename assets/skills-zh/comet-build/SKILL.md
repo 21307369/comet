@@ -46,7 +46,6 @@ fi
 计划要求：
 - 保存至 `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`
 - 引用设计文档，拆分为可执行任务
-- 遵循产物收敛原则：先读实际代码，任务引用具体文件路径和已有接口，接口签名写代码、实现逻辑用伪代码
 - **Plan 文件头必须包含关联元数据**：
 
 ```yaml
@@ -71,16 +70,6 @@ Subagent 完成后：
 - 若返回有效文件路径且文件存在，记录为 plan
 - 若 subagent 失败或返回路径无效，在主 session 内联加载 Superpowers `writing-plans` 技能创建计划（降级回退）
 
-### 1b. 独立审查 Spec 和 Plan（Review Plan Gate）
-
-Plan 生成后、进入 plan-ready 暂停点前，必须通过独立审查子代理检查 spec 和 plan 的质量。此步骤通过**全新 context 的子代理**打破同源性偏差——原流程中 proposal → design → tasks → plan 由同一会话产出，容易"一致地错但看起来自洽"。
-
-**立即执行：** 使用 Skill 工具加载 `comet-review-plan` 技能。禁止跳过此步骤。若该技能不可用，跳过审查 gate 但必须在 tasks.md 中记录 `<!-- review-plan skipped: skill unavailable -->`，然后继续 Step 2。
-
-技能加载后，按 `/comet-review-plan` 的指引执行审查。默认使用 `spec+plan` 模式。审查完成后（pass 或用户选择接受风险），继续 Step 2。
-
-**降级处理**：若当前平台无 subagent 调度能力，按 `comet-review-plan` 的降级处理执行（主会话内审查，独立性降低）。
-
 ### 2. 更新计划状态并提供 plan-ready 暂停点
 
 先记录 plan 路径：
@@ -91,8 +80,6 @@ Plan 生成后、进入 plan-ready 暂停点前，必须通过独立审查子代
 
 无需手动更新 phase，阶段守卫（guard `--apply`）会在退出条件满足后推进 `phase` 字段。
 
-**INDEX.md 自动同步**：`guard --apply` 推进 build 阶段时，脚本会自动调用 `index-update` 将 `plan` 链接写入 INDEX.md 的「进行中」条目。无需手动编辑 INDEX.md。
-
 计划写入后，立即提供一个新的用户决策点：
 
 | 选项 | 行为 | 说明 |
@@ -100,7 +87,7 @@ Plan 生成后、进入 plan-ready 暂停点前，必须通过独立审查子代
 | A | 继续执行 | 保持在当前模型中，进入 Step 3 选择工作区隔离和执行方式 |
 | B | 暂停切换模型 | 记录 `build_pause: plan-ready`，本次 `/comet-build` 停止，用户稍后可从 `/comet` 或 `/comet-build` 恢复 |
 
-这是用户决策点。按主 skill 阻塞点规则暂停等待用户明确选择，不得自动继续，也不得把暂停写入 `build_mode`。
+这是用户决策点。**必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户明确选择**，不得自动继续，也不得把暂停写入 `build_mode`。
 
 用户选择继续时：
 
@@ -151,7 +138,7 @@ Plan 生成后、进入 plan-ready 暂停点前，必须通过独立审查子代
 - 任务数 ≤ 2 且无跨模块依赖 → 推荐 B
 - 来自 hotfix 路径 → 推荐 B
 
-这是用户决策点。按主 skill 阻塞点规则暂停等待用户明确选择隔离方式、执行方式和 TDD 模式，不得根据推荐规则自行选择。推荐规则只能用于说明建议，不能替代用户确认。
+这是用户决策点。**必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户明确选择隔离方式、执行方式和 TDD 模式**，不得根据推荐规则自行选择 `branch` 或 `worktree`，也不得根据推荐规则自行选择执行方式或 TDD 模式。推荐规则只能用于说明建议，不能替代用户确认。
 
 用户选择后，更新 `isolation`、执行方式和 TDD 模式相关字段：
 
@@ -189,7 +176,7 @@ Plan 生成后、进入 plan-ready 暂停点前，必须通过独立审查子代
 
 **执行隔离**：
 
-- **branch**：根据 workflow 类型和当前日期推荐分支名，然后让用户确认或输入自定义名称。这是用户决策点——按主 skill 阻塞点规则暂停等待用户明确确认或覆盖分支名，不得跳过此步骤直接创建分支。
+- **branch**：根据 workflow 类型和当前日期推荐分支名，然后让用户确认或输入自定义名称。这是用户决策点——**必须使用当前平台可用的用户输入/确认机制暂停并等待用户明确确认或覆盖分支名**，不得跳过此步骤直接创建分支。
 
   分支命名规范：
   - 读取 `.comet.yaml` 的 `workflow` 字段确定前缀
@@ -214,19 +201,14 @@ git commit -m "chore: add implementation plan"
 **执行计划**：必须按 `build_mode` 的真实运行位置处理。
 
 - `build_mode: executing-plans`：**立即执行：** 使用 Skill 工具加载 Superpowers `executing-plans` 技能。禁止跳过此步骤。若该技能不可用，停止流程并提示安装或启用对应技能，不要用普通对话替代该步骤。技能加载后，ARGUMENTS 必须包含与 Step 1 相同的 Language 约束：`Language: 使用触发本次工作流的用户请求语言输出`。按计划执行。
-- `build_mode: subagent-driven-development`：主窗口只负责协调，不得把 `subagent-driven-development` 当作当前主窗口的执行技能直接运行；必须使用已确认的当前平台真实后台 subagent / Task / multi-agent 调度能力，把下一个未完成任务派发到后台 subagent。派发每个 subagent 时，必须在 prompt 中明确要求：技能加载后 ARGUMENTS 必须包含与 Step 1 相同的 Language 约束：`Language: 使用触发本次工作流的用户请求语言输出`；任务完成并通过验证后，立即勾选 `docs/superpowers/plans/<plan-file>.md` 中对应的计划任务；若该计划任务映射到 `openspec/changes/<name>/tasks.md` 中的任务，也同步将该 OpenSpec 任务从 `- [ ]` 改为 `- [x]`；若 plan 新增了 OpenSpec 中没有的一步，只勾选 plan 中对应任务即可。不得只更新内置 Todo 或对话内 checklist。后台 subagent 需要自行加载 Superpowers `subagent-driven-development` 相关执行流程，并按其指引完成实现、检查和提交。
-- 如果当前平台没有真实后台 subagent / Task / multi-agent 调度能力，必须暂停并等待用户选择改用主窗口执行。用户选择改用主窗口执行后，必须先运行 `"$COMET_BASH" "$COMET_STATE" set <name> build_mode executing-plans`，再按 `build_mode: executing-plans` 分支加载 Superpowers `executing-plans` 技能。用户未明确选择前，不得继续执行任务。
-
-执行开始后，按所选分支完成：
-- 按计划执行任务
-- 完成 Superpowers plan 对应任务勾选；若任务映射到 OpenSpec tasks.md，也勾选对应 OpenSpec 任务（`- [ ]` → `- [x]`）
-- 每个任务完成后提交代码
+- `build_mode: subagent-driven-development`：主会话只负责协调，禁止直接编写实现代码。**立即执行：** 使用 Skill 工具加载 Superpowers `subagent-driven-development` 技能。技能加载后，读取 `comet/reference/subagent-dispatch.md` 获取 Comet 专属扩展（真实后台调度、任务隔离、勾选验证、TDD 约束、连续执行、上下文恢复），与技能工作流配合应用。若两者发生冲突，以更具体的 Comet 扩展为准。
+- 如果当前平台没有真实后台 agent 调度能力，必须暂停并等待用户选择改用主窗口执行。用户选择改用主窗口执行后，必须先运行 `"$COMET_BASH" "$COMET_STATE" set <name> build_mode executing-plans`，再按 `build_mode: executing-plans` 分支加载 Superpowers `executing-plans` 技能。用户未明确选择前，不得继续执行任务。
 
 **TDD 模式执行约束**：
 
 若 `tdd_mode: tdd`：
 - `build_mode: executing-plans`：加载执行技能后、执行第一个任务前，**立即执行：** 使用 Skill 工具加载 Superpowers `test-driven-development` 技能一次。禁止跳过此步骤。技能加载后，从第一个未勾选任务开始，对每个任务遵循已加载的 TDD Red-Green-Refactor 循环执行。不得跳过失败测试验证阶段。后续任务不再重新加载该技能，直接遵循已加载流程。若上下文压缩后恢复，重新运行本步骤加载 TDD 技能一次，然后从第一个未勾选任务继续。
-- `build_mode: subagent-driven-development`：派发每个 subagent 时，必须在 prompt 中注入 TDD 硬约束：**"You MUST follow TDD: for each task, write a failing test first, watch it fail, then write minimal code to pass. No production code without a failing test first."**。同一个 prompt 还必须包含上述 OpenSpec tasks.md 与 Superpowers plan 持久化勾选要求。不得依赖 implementer-prompt.md 的条件触发，必须在派发 prompt 中显式写出。
+- `build_mode: subagent-driven-development`：主会话不加载 TDD skill；TDD 约束和证据门槛已在 `comet/reference/subagent-dispatch.md` 中定义，每个后台 implementer 和修复 agent 必须自行使用 Skill 工具加载 Superpowers `test-driven-development` 技能，并遵循 Comet 注入的 TDD 硬约束。
 
 若 `tdd_mode: direct`：按正常流程执行，不强制 TDD。
 
@@ -244,11 +226,7 @@ git commit -m "chore: add implementation plan"
 
 执行任务期间，只要运行程序、测试、构建或手动验证时出现崩溃、异常行为、测试失败或构建失败，必须使用 Skill 工具加载 Superpowers `systematic-debugging` 技能。在完成根因调查前，不得提出或实施源码修复。
 
-按 `systematic-debugging` 的四阶段流程处理：
-- 先复现并定位根因，读取完整错误、检查近期变更、追踪数据流
-- 若根因指向源码 bug，先补充能复现该崩溃/异常的最小失败测试，再修改源码
-- 修复后运行该失败测试、相关测试和项目构建/验证命令，确认全部通过
-- 将测试、源码修复和 tasks.md 勾选保留在当前 change 内；不得通过另起一个“写测试用例”的 change 来替代当前 change 的验证闭环
+具体调查、最小失败测试、修复验证和保持当前 change 验证闭环的要求，按 `comet/reference/debug-gate.md` 执行。
 
 ### 4. Spec 增量更新
 
@@ -257,10 +235,10 @@ git commit -m "chore: add implementation plan"
 | 规模 | 触发条件 | 做法 |
 |------|---------|------|
 | 小 | 遗漏验收场景、边界条件 | 直接编辑 delta spec + design.md，追加 tasks.md 任务 |
-| 中 | 接口变更、新增组件、数据流变化 | 按主 skill 阻塞点规则暂停等待用户确认后，必须使用 Skill 工具加载 Superpowers `brainstorming` 更新 Design Doc + delta spec |
-| 大 | 全新 capability 需求 | 按主 skill 阻塞点规则暂停等待用户确认拆分；用户确认后，通过 `/comet-open` 创建独立 change |
+| 中 | 接口变更、新增组件、数据流变化 | **使用当前平台可用的用户输入/确认机制暂停并等待用户确认后**，必须使用 Skill 工具加载 Superpowers `brainstorming` 更新 Design Doc + delta spec |
+| 大 | 全新 capability 需求 | **必须使用当前平台可用的用户输入/确认机制暂停并等待用户确认拆分**；用户确认后，通过 `/comet-open` 创建独立 change |
 
-**50% 阈值判定**：以 tasks.md 初始任务总数为基准，若新增任务数超过该总数的一半，视为超出原计划范围，按主 skill 阻塞点规则暂停等待用户决定是否拆分为新 change。
+**50% 阈值判定**：以 tasks.md 初始任务总数为基准，若新增任务数超过该总数的一半，视为超出原计划范围，**必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户决定是否拆分为新 change**。
 
 创建独立 change 时必须调用 `/comet-open`，不得直接调用 `/opsx:new`。`/comet-open` 会同时创建 OpenSpec 产物和 `.comet.yaml`，避免新 change 脱离 Comet 状态机。
 
@@ -278,8 +256,8 @@ git commit -m "chore: add implementation plan"
 
 Build 是最长阶段，可能跨越大量任务。为支持上下文压缩后断点恢复：
 
-- **每完成一个 task**：立即勾选 Superpowers plan 中的对应任务；若任务映射到 OpenSpec tasks.md，也勾选对应 OpenSpec 任务；然后提交代码，确保 `.comet.yaml` 和文件状态持久化。用 `grep -c '\- \[ \]' tasks.md` 检查剩余未勾选数，无需重新读取整个文件
-- **上下文压缩后恢复**：先运行 `"$COMET_BASH" "$COMET_STATE" check <change-name> build --recover`，脚本输出结构化恢复上下文（isolation/build_mode 状态、plan 路径、任务完成进度、恢复动作）。根据 Recovery action 决定下一步。
+- **每完成一个 task**：按当前执行分支完成验收后再勾选对应任务并提交。`subagent-driven-development` 必须等两个审查都通过，并按任务唯一文本完成定向检查。可用 `grep -c '\- \[ \]' tasks.md` 检查剩余未勾选数，无需重新读取整个文件
+- **上下文压缩后恢复**：按 `comet/reference/context-recovery.md` 执行，phase 参数为 `build`。
 - **用户手动修改恢复**：按 `comet/reference/dirty-worktree.md` 协议处理未提交改动。该协议定义了检查步骤、归因分类和禁令。build 阶段的特殊处理：
   1. 归因后，若 diff 暗示计划或 spec 已变化，按 Step 4「Spec 增量更新」分级处理
 - **长任务拆分**：单任务超过 200 行代码变更时，考虑拆分为多个子任务分别提交
@@ -315,4 +293,12 @@ verify_command: <verify command>
 
 ## 自动衔接下一阶段
 
-按主 skill「共享规则 → 自动衔接下一阶段」执行。
+按 `comet/reference/auto-transition.md` 执行。关键命令：
+
+```bash
+"$COMET_BASH" "$COMET_STATE" next <change-name>
+```
+
+- `NEXT: auto` → 调用 `SKILL` 指向的 skill 进入下一阶段
+- `NEXT: manual` → 不要调用下一 skill，按 `HINT` 提示用户手动运行 `/<SKILL>`
+- `NEXT: done` → 流程已完成，无需继续

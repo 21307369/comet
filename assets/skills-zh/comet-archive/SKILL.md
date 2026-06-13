@@ -35,7 +35,7 @@ fi
 
 ### 1. 归档前最终确认（阻塞点）
 
-入口验证通过后，按主 skill 阻塞点规则暂停等待用户确认是否立即归档。不得在用户确认前运行 `"$COMET_BASH" "$COMET_ARCHIVE" "<change-name>"`。
+入口验证通过后，**必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户确认是否立即归档**。不得在用户确认前运行 `"$COMET_BASH" "$COMET_ARCHIVE" "<change-name>"`。
 
 确认前必须向用户展示简短摘要：
 - change 名称
@@ -74,21 +74,7 @@ fi
 
 如需预览而不实际执行，使用 `--dry-run` 参数。
 
-### 3. 更新设计目录（INDEX.md）
-
-归档脚本（Step 7b）会自动将完整流程的 change 从「进行中」移到「已完成」。无需手动操作。
-
-**兜底**：如果自动步骤失败（检查脚本输出中的 `WARNING: Failed to update INDEX.md`），手动执行：
-
-```bash
-"$COMET_BASH" "$COMET_STATE" index-complete <change-name>
-```
-
-然后提交 INDEX.md 更新，commit message：`docs: update design registry after archiving <change-name>`
-
-**跳过条件**：如果项目中不存在 `docs/superpowers/INDEX.md`，跳过此步骤（INDEX.md 是项目级约定，非硬性要求）。如果 change 不是完整流程（hotfix/tweak），跳过此步骤（只有完整流程才产出设计文档）。
-
-### 4. 生命周期闭环
+### 3. 生命周期闭环
 
 Spec 生命周期在此完成：
 ```
@@ -111,10 +97,4 @@ Comet 流程全部完成。如需开始新工作，调用 `/comet` 或 `/comet-o
 
 ## 上下文压缩恢复
 
-归档阶段在执行过程中可能触发上下文压缩。恢复时先运行：
-
-```bash
-"$COMET_BASH" "$COMET_STATE" check <change-name> archive --recover
-```
-
-脚本输出结构化恢复上下文（归档状态、已完成步骤）。按 Recovery action 判断下一步。若 `archived: true` 且归档目录存在，归档已完成，无需再次执行归档操作。
+按 `comet/reference/context-recovery.md` 执行，phase 参数为 `archive`。若 `archived: true` 且归档目录存在，归档已完成，无需再次执行归档操作。

@@ -35,7 +35,7 @@ Proceed to Step 1 after verification passes. The script outputs specific failure
 
 ### 1. Final Archive Confirmation (Blocking Point)
 
-After entry verification passes, follow main skill blocking point rule to pause for user confirmation on whether to archive immediately. Must not run `"$COMET_BASH" "$COMET_ARCHIVE" "<change-name>"` before user confirmation.
+After entry verification passes, **must follow the `comet/reference/decision-point.md` protocol to pause and wait for the user to confirm whether to archive immediately**. Must not run `"$COMET_BASH" "$COMET_ARCHIVE" "<change-name>"` before user confirmation.
 
 Before confirmation, show the user a brief summary:
 - Change name
@@ -74,21 +74,7 @@ The script calls OpenSpec archive to merge `ADDED/MODIFIED/REMOVED/RENAMED` delt
 
 Use `--dry-run` flag to preview without executing.
 
-### 3. Update Design Registry (INDEX.md)
-
-The archive script (Step 7b) automatically moves the change from "In Progress" to "Completed" in INDEX.md for full workflow changes. No manual action is needed.
-
-**Fallback**: If the automatic step fails (check for `WARNING: Failed to update INDEX.md` in the script output), run manually:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" index-complete <change-name>
-```
-
-Then commit the INDEX.md update with message: `docs: update design registry after archiving <change-name>`
-
-**Skip conditions**: If `docs/superpowers/INDEX.md` does not exist in the project, skip this step (INDEX.md is a project-level convention, not a hard requirement). If the change was not a full workflow (hotfix/tweak), skip this step (only full workflow changes produce design docs).
-
-### 4. Lifecycle Closed Loop
+### 3. Lifecycle Closed Loop
 
 Spec lifecycle completes here:
 ```
@@ -109,12 +95,6 @@ The archive script moves `openspec/changes/<name>/` to `openspec/changes/archive
 
 Comet workflow complete. To start new work, invoke `/comet` or `/comet-open`.
 
-## Context Compaction Recovery
+## Context Compression Recovery
 
-The archive phase may trigger context compaction during execution. On resume, first run:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" check <change-name> archive --recover
-```
-
-The script outputs structured recovery context (archive status, completed steps). Follow the Recovery action to determine next steps. If `archived: true` and the archive directory exists, archiving is already complete — no need to run the archive operation again.
+Follow `comet/reference/context-recovery.md` with phase set to `archive`. If `archived: true` and archive directory exists, archival is complete — do not re-execute archive operations.
