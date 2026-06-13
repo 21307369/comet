@@ -1321,7 +1321,7 @@ INDEXEOF
 cmd_index_add() {
   local change_name="$1"
   shift
-  local keywords="$*"
+  local keywords=("$@")
 
   # Ensure INDEX.md exists
   if [ ! -f "$INDEX_FILE" ]; then
@@ -1357,8 +1357,8 @@ cmd_index_add() {
 
   # Format keywords with backticks
   local kw_formatted=""
-  if [ -n "$keywords" ]; then
-    for kw in $keywords; do
+  if [ ${#keywords[@]} -gt 0 ]; then
+    for kw in "${keywords[@]}"; do
       if [ -n "$kw_formatted" ]; then
         kw_formatted="$kw_formatted, "
       fi
