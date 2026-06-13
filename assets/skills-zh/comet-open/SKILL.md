@@ -46,7 +46,7 @@ description: "Comet 阶段 1：开启。用 /comet-open 调用。通过 OpenSpec
 - 预计会产生多个 delta spec 或超过 3 个大任务
 - 任一部分失败或延期不应阻塞其他部分进入后续阶段
 
-如推荐拆分，必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户选择。
+如推荐拆分，按主 skill 阻塞点规则暂停等待用户选择。
 
 用户选择必须包含：
 - 「创建多个 OpenSpec changes」— 按候选拆分逐个创建独立 change
@@ -65,11 +65,44 @@ description: "Comet 阶段 1：开启。用 /comet-open 调用。通过 OpenSpec
 
 ### 1b. 需求澄清完成确认（阻塞点）
 
-创建 OpenSpec artifacts 前，必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户确认需求澄清完成。
+创建 OpenSpec artifacts 前，按主 skill 阻塞点规则暂停等待用户确认需求澄清完成。
 
 暂停时必须展示澄清摘要：目标、非目标、范围边界、关键未知项、验收场景草案。
 
 不得在用户确认需求澄清完成前创建 proposal.md、design.md 或 tasks.md，也不得使用 Skill 工具加载 `openspec-propose` 技能一次性生成全部 artifacts。
+
+### 1c. 文档冲突预检（阻塞点）
+
+创建任何 change artifacts 之前，必须运行程序化冲突检查，扫描已存在的相关文档。检查优先查阅 **设计目录**（`docs/superpowers/INDEX.md`）——所有设计文档的权威索引——然后回退到文件系统扫描。防止 `openspec/changes/` 和 `docs/superpowers/` 之间产生平行重复设计文档。
+
+**执行：**
+
+```bash
+COMET_ENV="${COMET_ENV:-$(find . "$HOME"/.*/skills "$HOME/.config" "$HOME/.gemini" -path '*/comet/scripts/comet-env.sh' -type f -print -quit 2>/dev/null)}"
+. "$COMET_ENV"
+
+# 从澄清摘要中提取关键词（change 名称 + 主题名词）
+"$COMET_BASH" "$COMET_STATE" conflict-check <proposed-name> <关键词1> <关键词2> ...
+```
+
+**关键词提取规则**：从澄清摘要中提取 3–5 个关键词——建议的 change 名称加核心主题名词（模块名、功能名、子系统名）。不得包含「add」「fix」「update」「improve」等泛化词。
+
+**检查优先级**：设计目录（`docs/superpowers/INDEX.md`）→ 文件系统扫描（`docs/superpowers/specs/`、`docs/superpowers/plans/`、`openspec/changes/` 非归档）。
+
+**当冲突检查返回 1（发现冲突）时：**
+
+按主 skill 阻塞点规则暂停展示冲突报告，等待用户回复。用户选择必须包含：
+- 「继续已有 change」— 放弃新建，路由到已有活跃 change
+- 「扩展已有设计文档」— 放弃新建，打开已有设计文档进行编辑
+- 「确认无关，新建」— 用户明确确认范围无关，用明显不同的名称继续 Step 2
+
+不得在用户完成冲突检查选择前创建 proposal.md、design.md 或 tasks.md。
+
+**当冲突检查返回 0（无冲突）时：**
+
+正常继续 Step 2。
+
+**创建 change 后**：INDEX.md 由阶段守卫自动同步。当 `guard --apply` 推进 open 阶段时，脚本会自动调用 `index-add` 将新 change 添加到「进行中」表格。无需手动编辑 INDEX.md。
 
 ### 2. 创建 Change 结构 + 初始化状态
 
@@ -77,33 +110,28 @@ description: "Comet 阶段 1：开启。用 /comet-open 调用。通过 OpenSpec
 
 完整 `/comet` 流程默认不得使用 Skill 工具加载 `openspec-propose` 技能；只有用户明确要求一次性生成提案和 artifacts 时才允许加载。
 
-技能加载后，按其指引创建 change 骨架，但当 Step 1b 的已确认澄清摘要已存在于对话上下文时，覆盖其"STOP and wait for user direction"行为。
+技能加载后，按其指引创建 change 骨架，但当 Step 1b 的已确认澄清摘要已存在于对话上下文时，覆盖其"STOP and wait for user direction"行为。具体如下：
 
-如果用户已确认澄清摘要（Step 1b），直接使用该摘要填充产物内容。如果不存在澄清摘要（边缘情况），回退到技能的默认行为，询问用户。
+1. 按技能指引执行 `openspec new change`、`openspec status`、`openspec instructions`
+2. 如果用户已确认澄清摘要（Step 1b），直接使用该摘要起草 proposal.md —— 不得再要求用户重新描述变更内容
+3. 如果不存在澄清摘要（边缘情况），回退到技能的默认行为，询问用户
 
-change 骨架创建后，按以下标准产物循环逐个生成 `proposal`、`design`、`tasks`：
+然后逐个补齐 proposal.md、design.md、tasks.md；每个文档都必须基于已确认的澄清摘要。
 
-**标准产物循环**（对每个 `artifact-id`：`proposal` → `design` → `tasks`）：
+#### 产物收敛原则
 
-1. 刷新状态：`openspec status --change "<name>" --json`
-2. 获取产物指令：
+**通用规则（所有产物适用）**：
+- 生成任何产物前，必须先读取项目实际代码——已有文件结构、代码模式、依赖和约定
+- 所有产出必须基于项目真实上下文，不得凭模板或通用知识凭空生成
+- 实现逻辑用伪代码/逻辑描述代替完整代码，减少 token 消耗
 
-   ```bash
-   openspec instructions proposal --change "<name>" --json
-   openspec instructions design --change "<name>" --json
-   openspec instructions tasks --change "<name>" --json
-   ```
+**各文档职责与内容深度**：
 
-3. 对返回的 JSON 指令载荷，必须：
-   - 读取 `dependencies` 中列出的每个已完成依赖产物
-   - 以 `template` 作为产物结构
-   - 遵循 `instruction` 的指引
-   - 将 `context` 和 `rules` 作为约束条件应用，**不得复制到 artifact 内容中**
-   - 写入 `resolvedOutputPath`
-   - 验证输出文件存在且非空
-4. 每创建一个 artifact 后，重新运行 `openspec status --change "<name>" --json` 确认状态，然后继续下一个 artifact
-
-**失败处理**：如果 `openspec instructions` 失败、返回无效 JSON、报告未满足的 `dependencies`、或未提供可用的 `resolvedOutputPath`，必须立即停止 artifact 创建并报告 OpenSpec 错误。不得回退为硬编码文档结构，因为那样会绕过项目规则。
+| 文档 | 定位 | 内容要求 |
+|------|------|----------|
+| proposal.md | 纯逻辑层 | 问题背景、目标、范围、非目标。不含代码，对应项目实际模块 |
+| design.md | 设计层 | 架构决策、接口签名、数据结构定义、核心逻辑伪代码。接口签名/类型定义该写代码就写代码；实现逻辑用伪代码/逻辑描述 |
+| tasks.md | 执行层 | 任务分解，引用具体文件路径和已有接口。实现细节用逻辑描述，但要让执行者能直接动手 |
 
 **命名与范围守卫**：change name 必须使用用户指定或通过当前平台可用的用户输入/确认机制确认的名称，不得自动生成或推断。变更范围必须与用户描述一致，不得自行扩大或缩小。
 
@@ -150,16 +178,16 @@ fi
 
 ### 4. 内容完整性检查
 
-确认三个文档内容完整：
+确认三个文档内容完整，符合产物收敛原则中各文档的内容要求：
 - **proposal.md**：问题背景、目标、范围、非目标
-- **design.md**：高层架构决策、方案选型、数据流
-- **tasks.md**：任务列表，每个任务有明确描述
+- **design.md**：架构决策、接口签名、数据结构、核心逻辑伪代码
+- **tasks.md**：任务列表，引用具体文件路径和已有接口
 
 **文件存在性验证**：逐个确认三个文件路径存在且非空。任一文件缺失或为空时，不得进入 Step 5 或执行阶段守卫，必须回到创建步骤补充。
 
 ### 5. 用户审视确认（阻塞点）
 
-三个文档创建完成且内容完整性检查通过后，**必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户确认**。不得在用户确认前执行阶段守卫或自动流转。
+三个文档创建完成且内容完整性检查通过后，按主 skill 阻塞点规则暂停等待用户确认。
 
 用户确认问题必须以单选题形式呈现，包含以下摘要和选项：
 
@@ -190,14 +218,4 @@ fi
 
 ## 自动衔接下一阶段
 
-按 `comet/reference/auto-transition.md` 执行。关键命令：
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-- `NEXT: auto` → 调用 `SKILL` 指向的 skill 进入下一阶段
-- `NEXT: manual` → 不要调用下一 skill，按 `HINT` 提示用户手动运行 `/<SKILL>`
-- `NEXT: done` → 流程已完成，无需继续
-
-hotfix/tweak preset 由对应 preset skill 控制后续流转（phase 直接进入 build），其 `next` 会返回对应 preset skill。
+按主 skill「共享规则 → 自动衔接下一阶段」执行。hotfix/tweak preset 由对应 preset skill 控制后续流转（phase 直接进入 build），其 `next` 会返回对应 preset skill。

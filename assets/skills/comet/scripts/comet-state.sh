@@ -7,10 +7,14 @@
 #   get <change-name> <field>       — Read a field value from .comet.yaml
 #   set <change-name> <field> <val> — Update a field value
 #   transition <change-name> <event> — Apply a validated state transition
-#   check <change-name> <phase>    — Verify entry requirements for a phase
-#   check <change-name> <phase> --recover — Output structured recovery context for compaction resume
+#   check <change-name> <phase> [--recover] — Verify entry requirements for a phase
+#   conflict-check <proposed-name> [keywords...] — Scan for related existing documents
 #   scale <change-name>             — Assess and set verification mode based on metrics
-#   task-checkoff <file> <task-text> — Verify one unique task is checked
+#   index-init                      — Initialize INDEX.md design registry
+#   index-add <name> [keywords...]  — Add change to In Progress table
+#   index-update <name> <field> <v> — Update design_doc or plan link in INDEX.md
+#   index-complete <name>           — Move from In Progress to Completed
+#   index-clean-stale               — Remove entries for deleted changes
 #
 # Workflows: full, hotfix, tweak
 # Phases for check: open, design, build, verify, archive
@@ -958,6 +962,187 @@ cmd_recover() {
   echo "=== End Recovery Context ==="
 }
 
+cmd_conflict_check() {
+  local proposed_name="$1"
+  shift
+  local keywords=("$@")
+
+  validate_change_name "$proposed_name"
+
+  local conflicts=0
+  local found_docs=""
+  local index_file="docs/superpowers/INDEX.md"
+
+  echo "=== Conflict Check: $proposed_name ==="
+
+  # Auto-init INDEX.md if it doesn't exist (first-time use)
+  if [ ! -f "$index_file" ]; then
+    yellow "INDEX.md not found, initializing design registry..."
+    cmd_index_init
+  fi
+
+  # Clean stale entries (change directories that no longer exist)
+  cmd_index_clean_stale 2>/dev/null || true
+
+  # 0. Check Design Registry (INDEX.md) first — authoritative source
+  if [ -f "$index_file" ] && [ ${#keywords[@]} -gt 0 ]; then
+    local index_hits=""
+    for kw in "${keywords[@]}"; do
+      # Match keyword in table rows (keyword column is last, backtick-wrapped)
+      local matches
+      matches=$(grep -i "\`$kw\`" "$index_file" 2>/dev/null | grep -v "^#" | grep -v "^>" || true)
+      if [ -n "$matches" ]; then
+        # Extract the design doc link from matched lines
+        local doc_link
+        doc_link=$(echo "$matches" | grep -o '\[design\]([^)]*)' | head -1 || true)
+        local plan_link
+        plan_link=$(echo "$matches" | grep -o '\[plan\]([^)]*)' | head -1 || true)
+        local feature_name
+        feature_name=$(echo "$matches" | head -1 | awk -F'|' '{gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3}')
+        
+        yellow "INDEX HIT: Keyword '$kw' found in Design Registry — feature: $feature_name" >&2
+        if [ -n "$doc_link" ]; then
+          local doc_path
+          doc_path=$(echo "$doc_link" | sed 's/\[design\](\(.*\))/\1/')
+          found_docs="$found_docs\n  - docs/superpowers/$doc_path (INDEX keyword: $kw, feature: $feature_name)"
+        fi
+        if [ -n "$plan_link" ]; then
+          local plan_path
+          plan_path=$(echo "$plan_link" | sed 's/\[plan\](\(.*\))/\1/')
+          found_docs="$found_docs\n  - docs/superpowers/$plan_path (INDEX keyword: $kw, feature: $feature_name)"
+        fi
+        conflicts=$((conflicts + 1))
+        index_hits="$index_hits $kw"
+      fi
+    done
+    
+    # Also check proposed name against feature names in INDEX.md
+    for kw in "${keywords[@]}"; do
+      if grep -iq "$kw" "$index_file" 2>/dev/null | grep -q "|.*$kw.*|" 2>/dev/null; then
+        : # already handled above
+      fi
+    done
+    
+    # If INDEX.md had hits, skip file-system scan (INDEX is authoritative)
+    if [ "$conflicts" -gt 0 ]; then
+      echo ""
+      echo "Found $conflicts conflict(s) via Design Registry:"
+      echo ""
+      echo -e "$found_docs"
+      echo ""
+      red "ACTION REQUIRED: Related design already registered in INDEX.md." >&2
+      red "Options:" >&2
+      red "  1. Continue the existing change instead of creating a new one" >&2
+      red "  2. Extend the existing design doc instead of creating a parallel one" >&2
+      red "  3. Use a distinctly different name and confirm with user that scope is unrelated" >&2
+      echo ""
+      return 1
+    else
+      green "INDEX.md: no matching keywords found in registry"
+    fi
+  fi
+
+  # 1. Check active (non-archived) changes with similar names
+  if [ -d "openspec/changes" ]; then
+    for change_dir in openspec/changes/*/; do
+      [ -d "$change_dir" ] || continue
+      local existing_name
+      existing_name=$(basename "$change_dir")
+      # Skip archive directory
+      [ "$existing_name" = "archive" ] && continue
+
+      # Name similarity check
+      if [ "$existing_name" = "$proposed_name" ]; then
+        red "CONFLICT: Active change with exact same name exists: $change_dir" >&2
+        conflicts=$((conflicts + 1))
+        continue
+      fi
+
+      # Keyword overlap with existing proposal.md
+      if [ ${#keywords[@]} -gt 0 ] && [ -f "$change_dir/proposal.md" ]; then
+        for kw in "${keywords[@]}"; do
+          if grep -iq "$kw" "$change_dir/proposal.md" 2>/dev/null; then
+            yellow "WARNING: Keyword '$kw' matches active change: $existing_name (proposal.md)" >&2
+            found_docs="$found_docs\n  - $change_dir/proposal.md (matches: $kw)"
+            conflicts=$((conflicts + 1))
+            break
+          fi
+        done
+      fi
+    done
+  fi
+
+  # 2. Check docs/superpowers/specs/ for related design docs
+  if [ -d "docs/superpowers/specs" ]; then
+    for spec_file in docs/superpowers/specs/*.md; do
+      [ -f "$spec_file" ] || continue
+      local basename_spec
+      basename_spec=$(basename "$spec_file")
+      # Skip conflict-report files
+      echo "$basename_spec" | grep -q "conflict-report" && continue
+
+      # Check filename for keyword matches
+      for kw in "${keywords[@]}"; do
+        if echo "$basename_spec" | grep -iq "$kw"; then
+          yellow "WARNING: Keyword '$kw' matches existing design doc: $spec_file" >&2
+          found_docs="$found_docs\n  - $spec_file (filename matches: $kw)"
+          conflicts=$((conflicts + 1))
+          break
+        fi
+      done
+
+      # Check file content for keyword matches (first 20 lines for frontmatter/title)
+      if [ ${#keywords[@]} -gt 0 ]; then
+        for kw in "${keywords[@]}"; do
+          if head -20 "$spec_file" 2>/dev/null | grep -iq "$kw"; then
+            yellow "WARNING: Keyword '$kw' found in: $spec_file" >&2
+            # Only count if not already counted by filename match
+            if ! echo "$basename_spec" | grep -iq "$kw"; then
+              found_docs="$found_docs\n  - $spec_file (content matches: $kw)"
+              conflicts=$((conflicts + 1))
+            fi
+            break
+          fi
+        done
+      fi
+    done
+  fi
+
+  # 3. Check docs/superpowers/plans/ for related plans
+  if [ -d "docs/superpowers/plans" ]; then
+    for plan_file in docs/superpowers/plans/*.md; do
+      [ -f "$plan_file" ] || continue
+      for kw in "${keywords[@]}"; do
+        if basename "$plan_file" | grep -iq "$kw"; then
+          yellow "WARNING: Keyword '$kw' matches existing plan: $plan_file" >&2
+          found_docs="$found_docs\n  - $plan_file (filename matches: $kw)"
+          conflicts=$((conflicts + 1))
+          break
+        fi
+      done
+    done
+  fi
+
+  # Output summary
+  echo ""
+  if [ "$conflicts" -gt 0 ]; then
+    echo "Found $conflicts potential conflict(s):"
+    echo ""
+    echo -e "$found_docs"
+    echo ""
+    red "ACTION REQUIRED: Related documents already exist." >&2
+    red "Options:" >&2
+    red "  1. Continue the existing change instead of creating a new one" >&2
+    red "  2. Extend the existing design doc instead of creating a parallel one" >&2
+    red "  3. Use a distinctly different name and confirm with user that scope is unrelated" >&2
+    echo ""
+    return 1
+  else
+    green "No conflicts found — safe to create new change"
+    return 0
+  fi
+}
+
 cmd_scale() {
   local change_name="$1"
 
@@ -1023,59 +1208,6 @@ cmd_scale() {
   replace_yaml_field "$yaml_file" "verify_mode" "$result"
 
   green "[SCALE] verify_mode=$result"
-}
-
-cmd_task_checkoff() {
-  local task_file="$1"
-  local task_text="$2"
-
-  validate_path_field "$task_file" "task file"
-
-  if [ -z "$task_text" ]; then
-    red "ERROR: Task text cannot be empty" >&2
-    exit 1
-  fi
-
-  if [ ! -f "$task_file" ]; then
-    red "ERROR: Task file not found: $task_file" >&2
-    exit 1
-  fi
-
-  local counts
-  counts=$(TASK_TEXT="$task_text" awk '
-    BEGIN {
-      task = ENVIRON["TASK_TEXT"]
-    }
-    {
-      sub(/\r$/, "")
-      if ($0 == "- [ ] " task || $0 == "- [x] " task || $0 == "- [X] " task) {
-        total++
-      }
-      if ($0 == "- [x] " task || $0 == "- [X] " task) {
-        checked++
-      }
-    }
-    END {
-      printf "%d %d\n", total + 0, checked + 0
-    }
-  ' "$task_file")
-
-  local total="${counts%% *}"
-  local checked="${counts##* }"
-
-  if [ "$total" -ne 1 ]; then
-    red "ERROR: task text must appear exactly once in $task_file (found $total): $task_text" >&2
-    exit 1
-  fi
-
-  if [ "$checked" -ne 1 ]; then
-    red "ERROR: task is not checked in $task_file: $task_text" >&2
-    exit 1
-  fi
-
-  echo "TASK_CHECKOFF: PASS"
-  echo "FILE: $task_file"
-  echo "TASK: $task_text"
 }
 
 # Resolve the next workflow step after a guard --apply phase advance.
@@ -1153,6 +1285,314 @@ cmd_next() {
   fi
 }
 
+# --- INDEX.md management ---
+
+INDEX_FILE="docs/superpowers/INDEX.md"
+
+# Initialize INDEX.md with standard structure if it doesn't exist
+cmd_index_init() {
+  if [ -f "$INDEX_FILE" ]; then
+    green "INDEX.md already exists at $INDEX_FILE"
+    return 0
+  fi
+
+  mkdir -p "$(dirname "$INDEX_FILE")"
+  cat > "$INDEX_FILE" << 'INDEXEOF'
+# Design Registry
+
+This file tracks all design documents and plans to prevent duplicate feature designs.
+
+## In Progress
+
+| Date | Feature | [design] | [plan] | Keywords |
+|------|---------|----------|--------|----------|
+
+## Completed
+
+| Date | Feature | [design] | [plan] | Keywords |
+|------|---------|----------|--------|----------|
+INDEXEOF
+
+  green "Created $INDEX_FILE with standard structure"
+}
+
+# Add a new entry to "In Progress" table
+# Usage: index-add <change-name> [keywords...]
+cmd_index_add() {
+  local change_name="$1"
+  shift
+  local keywords="$*"
+
+  # Ensure INDEX.md exists
+  if [ ! -f "$INDEX_FILE" ]; then
+    cmd_index_init
+  fi
+
+  # Check if entry already exists
+  if grep -q "| $change_name |" "$INDEX_FILE" 2>/dev/null; then
+    yellow "Entry for '$change_name' already exists in INDEX.md"
+    return 0
+  fi
+
+  # Get date from .comet.yaml or use today
+  local date
+  local yaml_file="openspec/changes/$change_name/.comet.yaml"
+  if [ -f "$yaml_file" ]; then
+    date=$(grep "^created_at:" "$yaml_file" 2>/dev/null | awk '{print $2}' || true)
+  fi
+  if [ -z "$date" ]; then
+    date=$(date +%Y-%m-%d)
+  fi
+
+  # Extract feature name from proposal.md title
+  local feature="$change_name"
+  local proposal="openspec/changes/$change_name/proposal.md"
+  if [ -f "$proposal" ]; then
+    local title
+    title=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' || true)
+    if [ -n "$title" ]; then
+      feature="$title"
+    fi
+  fi
+
+  # Format keywords with backticks
+  local kw_formatted=""
+  if [ -n "$keywords" ]; then
+    for kw in $keywords; do
+      if [ -n "$kw_formatted" ]; then
+        kw_formatted="$kw_formatted, "
+      fi
+      kw_formatted="${kw_formatted}\`$kw\`"
+    done
+  fi
+
+  # Build the row: | Date | Feature | - | - | Keywords |
+  local row="| $date | $feature | - | - | $kw_formatted |"
+
+  # Insert before the empty line after "In Progress" header row
+  # Use awk to find the "## In Progress" section and insert after the header row
+  awk -v row="$row" '
+    /^## In Progress$/ { in_progress=1; print; next }
+    in_progress && /^\| Date/ { print; getline; print; print row; in_progress=0; next }
+    { print }
+  ' "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
+
+  green "Added '$change_name' to INDEX.md In Progress"
+}
+
+# Update an existing entry with design_doc or plan path
+# Usage: index-update <change-name> <field> <value>
+# field: design_doc | plan
+cmd_index_update() {
+  local change_name="$1"
+  local field="$2"
+  local value="$3"
+
+  if [ ! -f "$INDEX_FILE" ]; then
+    yellow "INDEX.md does not exist, nothing to update"
+    return 0
+  fi
+
+  # Get feature name from proposal
+  local feature="$change_name"
+  local proposal="openspec/changes/$change_name/proposal.md"
+  if [ -f "$proposal" ]; then
+    local title
+    title=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' || true)
+    if [ -n "$title" ]; then
+      feature="$title"
+    fi
+  fi
+
+  # Check if entry exists (by change name or feature name)
+  if ! grep -qF "$change_name" "$INDEX_FILE" 2>/dev/null && \
+     ! grep -qF "$feature" "$INDEX_FILE" 2>/dev/null; then
+    yellow "Entry for '$change_name' not found in INDEX.md, adding new entry"
+    cmd_index_add "$change_name"
+  fi
+
+  # Build the link: [design](path) or [plan](path)
+  local link_type
+  case "$field" in
+    design_doc|design) link_type="design" ;;
+    plan) link_type="plan" ;;
+    *) red "Unknown field: $field (expected design_doc or plan)" >&2; return 1 ;;
+  esac
+
+  local link="[$link_type]($value)"
+
+  # Determine which column to update (4th for design, 5th for plan)
+  local col
+  case "$link_type" in
+    design) col=4 ;;
+    plan) col=5 ;;
+  esac
+
+  # Use awk to update the specific column for matching row
+  # Match by change name OR feature name using exact match (not regex)
+  awk -v change="$change_name" -v feature="$feature" -v col="$col" -v link="$link" '
+    BEGIN { FS="|"; OFS="|" }
+    {
+      # Extract and trim column 3 for exact match
+      col3 = $3
+      gsub(/^[ \t]+|[ \t]+$/, "", col3)
+      # Check if this row matches change name or feature name exactly in column 3
+      if (col3 == change || col3 == feature) {
+        # Only update if current value is "-" or empty
+        gsub(/^[ \t]+|[ \t]+$/, "", $col)
+        if ($col == "-" || $col == "") {
+          $col = " " link " "
+        }
+      }
+      print
+    }
+  ' "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
+
+  green "Updated $link_type link for '$change_name' in INDEX.md"
+}
+
+# Move entry from "In Progress" to "Completed"
+# Usage: index-complete <change-name>
+cmd_index_complete() {
+  local change_name="$1"
+
+  if [ ! -f "$INDEX_FILE" ]; then
+    yellow "INDEX.md does not exist, nothing to complete"
+    return 0
+  fi
+
+  # Get feature name from proposal
+  local feature="$change_name"
+  local proposal="openspec/changes/$change_name/proposal.md"
+  if [ -f "$proposal" ]; then
+    local title
+    title=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' || true)
+    if [ -n "$title" ]; then
+      feature="$title"
+    fi
+  fi
+
+  # Get archive date
+  local date
+  date=$(date +%Y-%m-%d)
+
+  # Extract the row from "In Progress" section (match by exact column 3 value)
+  local row
+  row=$(awk -v change="$change_name" -v feature="$feature" '
+    BEGIN { FS="|"; found=0 }
+    /^## In Progress$/ { in_progress=1; next }
+    /^## / { in_progress=0 }
+    in_progress {
+      col3 = $3
+      gsub(/^[ \t]+|[ \t]+$/, "", col3)
+      if (col3 == change || col3 == feature) { print; found=1; exit }
+    }
+  ' "$INDEX_FILE")
+
+  if [ -z "$row" ]; then
+    yellow "Entry for '$change_name' not found in In Progress"
+    return 0
+  fi
+
+  # Update the date in the row to archive date
+  local completed_row
+  completed_row=$(echo "$row" | awk -v date="$date" '
+    BEGIN { FS="|"; OFS="|" }
+    { $2 = " " date " "; print }
+  ')
+
+  # Remove from In Progress and add to Completed
+  awk -v change="$change_name" -v feature="$feature" -v completed="$completed_row" '
+    BEGIN { FS="|"; OFS="|"; removed=0 }
+    /^## Completed$/ { in_completed=1 }
+    /^## / && !/^## Completed$/ { in_completed=0 }
+    # Remove matching row from In Progress (exact match on column 3)
+    /^## In Progress$/ { in_progress=1; print; next }
+    in_progress {
+      col3 = $3
+      gsub(/^[ \t]+|[ \t]+$/, "", col3)
+      if (col3 == change || col3 == feature) { in_progress=0; next }
+    }
+    /^## / { in_progress=0 }
+    # Add completed row after Completed header row
+    in_completed && /^\| Date/ { print; getline; print; print completed; in_completed=0; next }
+    { print }
+  ' "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
+
+  green "Moved '$change_name' from In Progress to Completed in INDEX.md"
+}
+
+# Clean stale entries (change directory no longer exists)
+cmd_index_clean_stale() {
+  if [ ! -f "$INDEX_FILE" ]; then
+    return 0
+  fi
+
+  local stale_count=0
+
+  # Find entries in "In Progress" where change dir doesn't exist
+  awk '
+    BEGIN { FS="|" }
+    /^## In Progress$/ { in_progress=1; next }
+    /^## / { in_progress=0 }
+    in_progress && /^\| [0-9]/ {
+      # Extract feature name (3rd column)
+      gsub(/^[ \t]+|[ \t]+$/, "", $3)
+      print $3
+    }
+  ' "$INDEX_FILE" | while read -r feature; do
+    # Try to find matching change directory
+    local found=0
+    if [ -d "openspec/changes" ]; then
+      for dir in openspec/changes/*/; do
+        [ -d "$dir" ] || continue
+        local name
+        name=$(basename "$dir")
+        [ "$name" = "archive" ] && continue
+        # Check if feature matches change name or proposal title
+        if [ "$name" = "$feature" ]; then
+          found=1
+          break
+        fi
+        local proposal="$dir/proposal.md"
+        if [ -f "$proposal" ]; then
+          local title
+          title=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' || true)
+          if [ "$title" = "$feature" ]; then
+            found=1
+            break
+          fi
+        fi
+      done
+    fi
+    if [ "$found" -eq 0 ]; then
+      echo "$feature"
+    fi
+  done > /tmp/comet-stale-features.txt
+
+  if [ -s /tmp/comet-stale-features.txt ]; then
+    while read -r stale_feature; do
+      yellow "Stale entry found: '$stale_feature' (change directory no longer exists)"
+      # Remove the stale row using exact match (not regex)
+      awk -v feature="$stale_feature" '
+        BEGIN { FS="|" }
+        {
+          col3 = $3
+          gsub(/^[ \t]+|[ \t]+$/, "", col3)
+          if (col3 == feature) next
+        }
+        { print }
+      ' "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
+      stale_count=$((stale_count + 1))
+    done < /tmp/comet-stale-features.txt
+    green "Cleaned $stale_count stale entries from INDEX.md"
+  else
+    green "No stale entries found in INDEX.md"
+  fi
+
+  rm -f /tmp/comet-stale-features.txt
+}
+
 # --- Main ---
 
 SUBCOMMAND="${1:-}"
@@ -1202,6 +1642,13 @@ case "$SUBCOMMAND" in
       cmd_check "$@"
     fi
     ;;
+  conflict-check)
+    if [ $# -lt 1 ]; then
+      red "Usage: comet-state.sh conflict-check <proposed-name> [keywords...]" >&2
+      exit 1
+    fi
+    cmd_conflict_check "$@"
+    ;;
   scale)
     if [ $# -lt 1 ]; then
       red "Usage: comet-state.sh scale <change-name>" >&2
@@ -1209,19 +1656,39 @@ case "$SUBCOMMAND" in
     fi
     cmd_scale "$@"
     ;;
-  task-checkoff)
-    if [ $# -lt 2 ]; then
-      red "Usage: comet-state.sh task-checkoff <file> <task-text>" >&2
-      exit 1
-    fi
-    cmd_task_checkoff "$@"
-    ;;
   next)
     if [ $# -lt 1 ]; then
       red "Usage: comet-state.sh next <change-name>" >&2
       exit 1
     fi
     cmd_next "$@"
+    ;;
+  index-init)
+    cmd_index_init
+    ;;
+  index-add)
+    if [ $# -lt 1 ]; then
+      red "Usage: comet-state.sh index-add <change-name> [keywords...]" >&2
+      exit 1
+    fi
+    cmd_index_add "$@"
+    ;;
+  index-update)
+    if [ $# -lt 3 ]; then
+      red "Usage: comet-state.sh index-update <change-name> <design_doc|plan> <path>" >&2
+      exit 1
+    fi
+    cmd_index_update "$@"
+    ;;
+  index-complete)
+    if [ $# -lt 1 ]; then
+      red "Usage: comet-state.sh index-complete <change-name>" >&2
+      exit 1
+    fi
+    cmd_index_complete "$@"
+    ;;
+  index-clean-stale)
+    cmd_index_clean_stale
     ;;
   *)
     red "Unknown subcommand: $SUBCOMMAND" >&2
@@ -1234,9 +1701,14 @@ case "$SUBCOMMAND" in
     echo "  set <change-name> <field> <val> — Update a field value in .comet.yaml" >&2
     echo "  transition <change-name> <event> — Apply a validated state transition" >&2
     echo "  check <change-name> <phase>    — Verify entry requirements for a phase" >&2
+    echo "  conflict-check <name> [keywords...] — Scan for related existing documents" >&2
     echo "  scale <change-name>             — Assess and set verification mode based on metrics" >&2
-    echo "  task-checkoff <file> <task-text> — Verify one unique task is checked" >&2
     echo "  next <change-name>              — Resolve the next workflow step (auto/manual/done)" >&2
+    echo "  index-init                      — Initialize INDEX.md design registry" >&2
+    echo "  index-add <name> [keywords...]  — Add change to In Progress table" >&2
+    echo "  index-update <name> <field> <v> — Update design_doc or plan link" >&2
+    echo "  index-complete <name>           — Move from In Progress to Completed" >&2
+    echo "  index-clean-stale               — Remove entries for deleted changes" >&2
     echo "" >&2
     echo "Workflows: full, hotfix, tweak" >&2
     echo "Phases for check: open, design, build, verify, archive" >&2

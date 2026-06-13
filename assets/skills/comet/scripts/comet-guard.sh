@@ -706,6 +706,63 @@ apply_state_update() {
   fi
 }
 
+# Sync INDEX.md design registry after phase transition
+# Called automatically after apply_state_update succeeds
+sync_index_registry() {
+  local state_sh="$SCRIPT_DIR/comet-state.sh"
+  local p="$1"
+
+  [ -f "$state_sh" ] || return 0
+
+  local workflow
+  workflow=$(yaml_field_value "workflow" 2>/dev/null || true)
+
+  # Only full workflow produces design docs that need INDEX tracking
+  [ "$workflow" = "full" ] || return 0
+
+  # Ensure INDEX.md exists before any index operation
+  if [ ! -f "docs/superpowers/INDEX.md" ]; then
+    "$COMET_BASH" "$state_sh" index-init || warn "INDEX init failed"
+  fi
+
+  case "$p" in
+    open)
+      # Extract keywords from proposal.md (first heading + key terms)
+      local keywords=""
+      local proposal="$CHANGE_DIR/proposal.md"
+      if [ -f "$proposal" ]; then
+        # Get first few meaningful words from title as keywords
+        keywords=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' | \
+          awk '{for(i=1;i<=NF && i<=3;i++) printf "%s ", tolower($i)}' | \
+          sed 's/[^a-z0-9 ]//g' | awk '{print $1, $2, $3}' || true)
+      fi
+      "$COMET_BASH" "$state_sh" index-add "$CHANGE" $keywords || warn "INDEX index-add failed for $CHANGE"
+      ;;
+    design)
+      # Update design_doc link
+      local design_doc
+      design_doc=$(yaml_field_value "design_doc" 2>/dev/null || true)
+      if [ -n "$design_doc" ] && [ "$design_doc" != "null" ]; then
+        "$COMET_BASH" "$state_sh" index-update "$CHANGE" design_doc "$design_doc" || warn "INDEX index-update design_doc failed for $CHANGE"
+      fi
+      ;;
+    build)
+      # Update plan link
+      local plan
+      plan=$(yaml_field_value "plan" 2>/dev/null || true)
+      if [ -n "$plan" ] && [ "$plan" != "null" ]; then
+        "$COMET_BASH" "$state_sh" index-update "$CHANGE" plan "$plan" || warn "INDEX index-update plan failed for $CHANGE"
+      fi
+      ;;
+    verify)
+      # No INDEX update needed for verify phase
+      ;;
+    archive)
+      # No INDEX update here — comet-archive.sh Step 7b handles index-complete
+      ;;
+  esac
+}
+
 # --- Main ---
 
 if [ "${COMET_GUARD_SOURCE_ONLY:-0}" = "1" ]; then
@@ -738,6 +795,7 @@ else
   green "ALL CHECKS PASSED — ready for next phase"
   if [ "$APPLY" -eq 1 ]; then
     apply_state_update "$PHASE"
+    sync_index_registry "$PHASE"
     case "$PHASE" in
       open)
         new_phase=$(yaml_field_value "phase")

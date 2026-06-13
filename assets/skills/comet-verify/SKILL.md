@@ -77,20 +77,20 @@ If commit range shows changes exceed lightweight threshold (> 4 files, cross-mod
 
 ### 1b. Verification Failure Decision (Blocking Point)
 
-When verification does not pass, **must follow the `comet/reference/decision-point.md` protocol to pause and wait for the user to decide whether to fix or accept the deviation**. Must not automatically run `"$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail`, nor automatically invoke `/comet-build`.
+When verification does not pass, follow main skill blocking point rule to pause for user decision on whether to fix or accept the deviation. Must not automatically run `"$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail`, nor automatically invoke `/comet-build`.
 
 When pausing, must list:
 - Failed items
-- Whether CRITICAL or IMPORTANT (build failure, test failure, security issues, core acceptance scenario failure, lightweight code review correctness/security/edge-case issue)
+- Whether CRITICAL (build failure, test failure, security issues, core acceptance scenario failure)
 - Recommended handling approach
 
 **Uncertainty principle**: When severity is unclear, downgrade (SUGGESTION > WARNING > CRITICAL). Only use CRITICAL for build failures, test failures, and security issues; ambiguous or uncertain issues should be WARNING or SUGGESTION.
 
 After user selection, continue as follows:
 - **Fix all**: Run `"$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail`, then invoke `/comet-build` to fix
-- **Handle item by item**: CRITICAL or IMPORTANT failures must be fixed; WARNING/SUGGESTION failures may choose to accept deviation, but must record acceptance reason and impact scope in verification report. If any CRITICAL or IMPORTANT failure exists, skipping fix to accept all is not allowed
+- **Handle item by item**: CRITICAL failures must be fixed; non-CRITICAL failures may choose to accept deviation, but must record acceptance reason and impact scope in verification report. If any CRITICAL failure exists, skipping fix to accept all is not allowed
 
-**Retry limit**: After 3 consecutive verify-fail cycles, on the 4th failure the agent must not automatically choose to continue fixing; **must use the current platform's available user input/confirmation mechanism to pause** with only two options: "Accept all deviations and record" or "Continue fixing", for the user to explicitly decide.
+**Retry limit**: After 3 consecutive verify-fail cycles, on the 4th failure the agent must not automatically choose to continue fixing; follow main skill blocking point rule to pause with only two options: "Accept all deviations and record" or "Continue fixing", for the user to explicitly decide.
 
 ### 2. Artifact Context Loading (Hash On-Demand Read)
 
@@ -112,18 +112,15 @@ After the skill loads, follow the `verify_mode` branch:
 
 ### 2a. Lightweight Verification (Small Changes)
 
-Run these 6 checks:
+Run these 5 checks:
 
 1. All tasks.md tasks completed `[x]`
 2. Changed files match tasks.md descriptions (`git diff --stat` / `git diff --cached --stat` / `git diff --stat <base-ref>...HEAD` compared against tasks content)
 3. Build passes (run project-specific build command, e.g., `npm run build`, `mvn compile`, `cargo build`, etc.)
 4. Related tests pass
 5. No obvious security issues (no hardcoded keys, no new unsafe operations)
-6. Lightweight code review passes: use the Skill tool to load the Superpowers `requesting-code-review` skill and request a lightweight review that checks only correctness, security, and edge cases
 
-The lightweight code review input should be limited to this change's diff, tasks.md, and necessary test results; the review scope covers implementation correctness, security risk, and edge cases only, and does not perform spec coverage, Design Doc consistency, or drift checks. If the review finds CRITICAL or IMPORTANT issues, treat verification as failed and enter Step 1b.
-
-**Pass criteria**: All 6 items OK, no CRITICAL or IMPORTANT issues.
+**Pass criteria**: All 5 items OK, no CRITICAL issues.
 
 **When not passing**: Report failures, enter Step 1b verification failure decision blocking point. Only after user confirms fix, execute the following command to record failure and roll back to build phase, then invoke `/comet-build` to fix:
 
@@ -132,12 +129,12 @@ The lightweight code review input should be limited to this change's diff, tasks
 "$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail
 ```
 
-**Report format**: Brief table listing 6 check results + PASS/FAIL.
+**Report format**: Brief table listing 5 check results + PASS/FAIL.
 
 **Skipped items** (not checked in lightweight verification):
 - spec scenario coverage
 - design doc consistency deep comparison
-- code pattern consistency suggestions that do not affect correctness, security, or edge cases
+- code pattern consistency suggestions
 - delta spec and design doc drift detection
 
 ### 2b. Full Verification (Large Changes)
@@ -163,7 +160,7 @@ When verification does not pass: report missing items, enter Step 1b verificatio
 ```
 
 **Spec Drift Handling** (user decision point):
-- If check item 6 finds contradictions (delta spec has content but design doc does not reflect it), **must use the current platform's available user input/confirmation mechanism as a single-select question to pause and wait for the user to choose the handling method**; must not select automatically. Options:
+- If check item 6 finds contradictions (delta spec has content but design doc does not reflect it), follow main skill blocking point rule as a single-select question to pause for user choice of the handling method; must not select automatically. Options:
   - Option A: Append "Implementation Divergence" section to design doc recording deviation reason. Option A is a verify phase allowed artifact; after writing, must not re-trigger Step 1b dirty-worktree decision due to that design doc change
   - Option B: After user selects B, run `"$COMET_BASH" "$COMET_STATE" transition <change-name> verify-fail`, then invoke `/comet-build`; `/comet-build`'s Spec Incremental Update rules will load the Superpowers `brainstorming` skill to update Design Doc + delta spec
   - Option C: Confirm deviation is acceptable, continue verification (design doc will be marked as `superseded-by-main-spec` during archiving)
@@ -180,7 +177,7 @@ After the skill loads, follow its guidance to finish. Branch handling options:
 3. Keep branch (handle later)
 4. Discard work
 
-This is a user decision point. **Must follow the `comet/reference/decision-point.md` protocol to pause and wait for the user to choose branch handling method**. Must not select based on recommendations, defaults, or current branch status. Only after the user completes selection and the corresponding operation finishes, may `branch_status: handled` be written.
+This is a user decision point. Follow main skill blocking point rule to pause for user choice of branch handling method. Must not select based on recommendations, defaults, or current branch status. Only after the user completes selection and the corresponding operation finishes, may `branch_status: handled` be written.
 
 **Confirmation items**:
 - All tests pass
@@ -217,18 +214,16 @@ State file auto-updates to `phase: archive`, `verify_result: pass`, `verified_at
 
 ## Automatic Handoff to Next Phase
 
-Follow `comet/reference/auto-transition.md`. Key command:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-- `NEXT: auto` → invoke the skill pointed to by `SKILL` to enter the next phase
-- `NEXT: manual` → do not invoke the next skill; prompt user to run `/<SKILL>` manually
-- `NEXT: done` → workflow is complete, no further action needed
+Follow main skill "Shared Rules → Auto-Advance to Next Phase".
 
 Note: after `comet-archive` starts, it must first execute the final archive confirmation blocking point and wait for the user to explicitly choose "Confirm archive" before running the archive script. Must not automatically archive just because verification passed.
 
-## Context Compression Recovery
+## Context Compaction Recovery
 
-Follow `comet/reference/context-recovery.md` with phase set to `verify`.
+The verify phase may trigger context compaction. To recover, first run:
+
+```bash
+"$COMET_BASH" "$COMET_STATE" check <change-name> verify --recover
+```
+
+The script outputs structured recovery context (phase, verification status, branch status, recovery action). Follow the Recovery action to determine next step.

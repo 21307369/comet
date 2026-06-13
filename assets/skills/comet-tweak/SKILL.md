@@ -92,10 +92,6 @@ Before continuing or starting changes, handle uncommitted changes through `comet
 
 State automatically updates to `phase: verify`, `verify_result: pending`, then enter verification.
 
-During tweak execution, whenever running programs, tests, builds, or manual verification results in crashes, abnormal behavior, test failures, or build failures, you must use the Skill tool to load the Superpowers `systematic-debugging` skill. Do not propose or implement source code fixes before completing root cause investigation.
-
-For specific investigation, minimal failing test, fix verification, and keeping the current change verification loop, follow `comet/reference/debug-gate.md`.
-
 ### 3. Lightweight Verification (preset verify)
 
 Reuse `/comet-verify`. Tweak must maintain lightweight verification conditions: ≤ 3 tasks, ≤ 4 files, no delta spec, no new capability.
@@ -123,7 +119,7 @@ Exception: when `.comet.yaml` has `auto_transition: false`, after each phase gua
 
 The following situations must pause and wait for user confirmation:
 
-1. Encountering upgrade conditions (see "Upgrade Conditions" section). **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm** upgrading to full workflow
+1. Encountering upgrade conditions (see "Upgrade Conditions" section). Follow main skill blocking point rule to pause for explicit user confirmation of upgrading to full workflow
 2. verify phase (comet-verify) verification-failure and branch-handling decisions
 3. Final archive confirmation (before comet-archive runs the archive script)
 
@@ -147,7 +143,7 @@ Upgrade to full `/comet` when **any** of the following conditions are met:
 | New capability needed | Exceeds local optimization |
 | Delta spec needed | Affects existing specs |
 
-When upgrade conditions are met, **must follow the `comet/reference/decision-point.md` protocol to pause and wait for the user to explicitly confirm** upgrading to the full `/comet` workflow. Do not directly enter `/comet-design`, and do not automatically supplement Design Doc.
+When upgrade conditions are met, follow main skill blocking point rule to pause for explicit user confirmation of upgrading to the full `/comet` workflow. Do not directly enter `/comet-design`, and do not automatically supplement Design Doc.
 
 After user confirms upgrade, **must first update the workflow and phase fields** before entering full flow:
 
@@ -169,12 +165,4 @@ Then on current change basis, supplement Design Doc: **Immediately use the Skill
 
 ## Automatic Handoff to Next Phase
 
-Follow `comet/reference/auto-transition.md`. Key command:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <name>
-```
-
-- `NEXT: auto` → invoke the skill pointed to by `SKILL` to continue tweak workflow (`phase: build` returns `comet-tweak`, `verify` returns `comet-verify`, `archive` returns `comet-archive`)
-- `NEXT: manual` → do not invoke the next skill; prompt user to manually run `/<SKILL>` per `HINT`
-- `NEXT: done` → workflow is complete, no further action needed
+Follow main skill "Shared Rules → Auto-Advance to Next Phase".

@@ -126,6 +126,7 @@ fi
 
 DESIGN_DOC=$(yaml_field "design_doc")
 PLAN_PATH=$(yaml_field "plan")
+WORKFLOW_VAL=$(yaml_field "workflow")
 
 # --- Step 2: Validate entry state ---
 
@@ -292,6 +293,20 @@ else
     step_ok "archived: true"
   else
     step_fail "archived: true (.comet.yaml not found after move)"
+  fi
+fi
+
+# --- Step 7b: Move INDEX.md entry from In Progress to Completed ---
+
+if [ "$WORKFLOW_VAL" = "full" ] && [ -f "docs/superpowers/INDEX.md" ]; then
+  if [ "$DRY_RUN" -eq 1 ]; then
+    step_dry_run "Would run index-complete for $CHANGE"
+  else
+    if "$COMET_BASH" "$STATE_SH" index-complete "$CHANGE"; then
+      step_ok "INDEX.md updated (index-complete)"
+    else
+      yellow "WARNING: Failed to update INDEX.md (index-complete) for $CHANGE"
+    fi
   fi
 fi
 

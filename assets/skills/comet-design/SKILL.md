@@ -129,13 +129,15 @@ After the skill loads, follow its guidance to produce design proposals (presente
 - Requirement/scope gaps and Spec Patches to be written back
 - If acceptance scenarios need supplementing, indicate delta spec changes to be written back
 
+Follow Product Convergence Principle (see Step 2 definition): read actual code first, write interface signatures/data structures as code, use pseudocode for implementation logic.
+
 The brainstorming phase does not write to the Design Doc file; it only produces design proposals for Step 1c user confirmation. Only after confirmation should `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` be created and delta spec written back.
 
 For context compaction recovery, the agent must incrementally update `brainstorm-summary.md` during brainstorming. After each clarification round or proposal iteration, update the file whenever new confirmed facts, key constraints, candidate approaches, trade-offs/risks, testing strategy, or Spec Patch candidates emerge; mark unconfirmed items as "pending" or "candidate". This file is a recovery checkpoint, not the Design Doc, and must not replace the Step 1c user confirmation.
 
 ### 1c. User Confirms Design Proposal (Blocking Point)
 
-After brainstorming produces a design proposal, **must follow the `comet/reference/decision-point.md` protocol to pause and wait for the user to explicitly confirm the design proposal**. Must not create the final Design Doc, write `design_doc`, run design guard, or enter `/comet-build` before user confirmation.
+After brainstorming produces a design proposal, follow main skill blocking point rule to pause for explicit user confirmation of the design proposal.
 
 When pausing, only present essential summary:
 - Technical approach adopted
@@ -206,6 +208,8 @@ canonical_spec: openspec
 ---
 ```
 
+Follow Product Convergence Principle: read actual code first, write interface signatures/type definitions/data structures as code where needed, use pseudocode/logic descriptions for implementation logic.
+
 Write the Design Doc to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
 If Spec Patches need to be written back, also edit the corresponding `specs/*/spec.md`.
 
@@ -228,6 +232,8 @@ First record the design_doc path. If Spec Patches wrote back delta spec (added o
 
 If there are no delta spec changes, skip the handoff regeneration step. The state file updates automatically; no manual editing of other fields needed.
 
+**INDEX.md auto-sync**: When `guard --apply` advances the design phase, the script automatically calls `index-update` to write the `design_doc` link into the "In Progress" entry in INDEX.md. No manual INDEX.md editing required.
+
 ## Exit Conditions
 
 - Design Doc created and saved
@@ -246,18 +252,16 @@ Must use `--apply` before exit:
 "$COMET_BASH" "$COMET_GUARD" <change-name> design --apply
 ```
 
-## Context Compression Recovery
+## Context Compaction Recovery
 
-Follow `comet/reference/context-recovery.md` with phase set to `design`.
+The design phase may trigger context compaction during brainstorming. To recover, first run:
+
+```bash
+"$COMET_BASH" "$COMET_STATE" check <change-name> design --recover
+```
+
+The script outputs structured recovery context (phase, completed fields, pending fields, recovery action). Follow the Recovery action to determine next step.
 
 ## Automatic Handoff to Next Phase
 
-Follow `comet/reference/auto-transition.md`. Key command:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-- `NEXT: auto` → invoke the skill pointed to by `SKILL` to enter the next phase
-- `NEXT: manual` → do not invoke the next skill; prompt user to run `/<SKILL>` manually
-- `NEXT: done` → workflow is complete, no further action needed
+Follow main skill "Shared Rules → Auto-Advance to Next Phase".

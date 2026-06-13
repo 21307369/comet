@@ -142,20 +142,6 @@ async function createFakeOpenSpecArchive(tmpDir: string, archiveDateScript = 'da
 
 const describeShell = bashCommand ? describe : describe.skip;
 
-describe('comet shell script contracts', () => {
-  it('defines task-checkoff as a state-script command', async () => {
-    const stateSource = await fs.readFile(path.join(scriptsDir, 'comet-state.sh'), 'utf-8');
-
-    expect(stateSource).toContain('cmd_task_checkoff()');
-    expect(stateSource).toContain('validate_path_field "$task_file" "task file"');
-    expect(stateSource).toContain('TASK_TEXT="$task_text" awk');
-    expect(stateSource).toContain('task text must appear exactly once');
-    expect(stateSource).toContain('task is not checked');
-    expect(stateSource).toContain('task-checkoff)');
-    expect(stateSource).toContain('cmd_task_checkoff "$@"');
-  });
-});
-
 describeShell('comet shell scripts', () => {
   let tmpDir: string;
   let guardScript: string;
@@ -474,90 +460,6 @@ describeShell('comet shell scripts', () => {
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('.comet.yaml not found');
-  }, 20_000);
-
-  it('task-checkoff verifies one uniquely checked task', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'plan.md');
-    await writeFile(tasksFile, '- [x] Implement dispatch guard\n- [ ] Add docs\n');
-
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      'docs/plan.md',
-      'Implement dispatch guard',
-    ]);
-
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain('TASK_CHECKOFF: PASS');
-  }, 20_000);
-
-  it('task-checkoff rejects an unchecked task', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'plan.md');
-    await writeFile(tasksFile, '- [ ] Implement dispatch guard\n');
-
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      'docs/plan.md',
-      'Implement dispatch guard',
-    ]);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('task is not checked');
-  }, 20_000);
-
-  it('task-checkoff rejects duplicate task text across checkbox states', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'plan.md');
-    await writeFile(tasksFile, '- [x] Implement dispatch guard\n- [ ] Implement dispatch guard\n');
-
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      'docs/plan.md',
-      'Implement dispatch guard',
-    ]);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('task text must appear exactly once');
-  }, 20_000);
-
-  it('task-checkoff rejects paths outside the repository', async () => {
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      '../outside.md',
-      'Implement dispatch guard',
-    ]);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("cannot contain '..'");
-  }, 20_000);
-
-  it('task-checkoff rejects missing task file', async () => {
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      'docs/nonexistent.md',
-      'Some task',
-    ]);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('Task file not found');
-  }, 20_000);
-
-  it('task-checkoff rejects empty task text', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'plan.md');
-    await writeFile(tasksFile, '- [x] Implement dispatch guard\n');
-
-    const result = runBash(tmpDir, stateScript, ['task-checkoff', 'docs/plan.md', '']);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('Task text cannot be empty');
-  }, 20_000);
-
-  it('task-checkoff rejects file with no checkbox lines', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'empty.md');
-    await writeFile(tasksFile, '# Plan\n\nNo tasks here.\n');
-
-    const result = runBash(tmpDir, stateScript, ['task-checkoff', 'docs/empty.md', 'Some task']);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('task text must appear exactly once');
   }, 20_000);
 
   it('comet-env.sh exports bundled script paths from its own directory', async () => {
@@ -3708,6 +3610,250 @@ describeShell('comet shell scripts', () => {
       const result = runHookGuard(tmpDir, hookGuardScript, hookStdin(targetFile));
 
       expect(result.status).toBe(0);
+    }, 20_000);
+  });
+
+  describe('INDEX.md design registry lifecycle', () => {
+    it('index-init creates standard INDEX.md structure', async () => {
+      const result = runBash(tmpDir, stateScript, ['index-init']);
+
+      expect(result.status).toBe(0);
+      const indexContent = await fs.readFile(
+        path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
+        'utf-8',
+      );
+      expect(indexContent).toContain('# Design Registry');
+      expect(indexContent).toContain('## In Progress');
+      expect(indexContent).toContain('## Completed');
+      expect(indexContent).toContain('| Date | Feature | [design] | [plan] | Keywords |');
+    }, 20_000);
+
+    it('index-add adds entry to In Progress table', async () => {
+      await createChange(
+        tmpDir,
+        'test-feature',
+        [
+          'workflow: full',
+          'phase: open',
+          'created_at: 2026-06-12',
+          '',
+        ].join('\n'),
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'test-feature', 'proposal.md'),
+        '# Test Feature\n\nThis is a test.\n',
+      );
+
+      const result = runBash(tmpDir, stateScript, [
+        'index-add',
+        'test-feature',
+        'test',
+        'feature',
+      ]);
+
+      expect(result.status).toBe(0);
+      const indexContent = await fs.readFile(
+        path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
+        'utf-8',
+      );
+      expect(indexContent).toContain('Test Feature');
+      expect(indexContent).toContain('`test`');
+      expect(indexContent).toContain('`feature`');
+    }, 20_000);
+
+    it('index-update adds design_doc link to existing entry', async () => {
+      await createChange(
+        tmpDir,
+        'update-feature',
+        [
+          'workflow: full',
+          'phase: design',
+          'design_doc: docs/superpowers/specs/2026-06-12-design.md',
+          '',
+        ].join('\n'),
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'update-feature', 'proposal.md'),
+        '# Update Feature\n',
+      );
+      // First add the entry
+      runBash(tmpDir, stateScript, ['index-add', 'update-feature', 'update']);
+
+      const result = runBash(tmpDir, stateScript, [
+        'index-update',
+        'update-feature',
+        'design_doc',
+        'docs/superpowers/specs/2026-06-12-design.md',
+      ]);
+
+      expect(result.status).toBe(0);
+      const indexContent = await fs.readFile(
+        path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
+        'utf-8',
+      );
+      expect(indexContent).toContain('[design](docs/superpowers/specs/2026-06-12-design.md)');
+    }, 20_000);
+
+    it('index-complete moves entry from In Progress to Completed', async () => {
+      await createChange(
+        tmpDir,
+        'complete-feature',
+        [
+          'workflow: full',
+          'phase: archive',
+          '',
+        ].join('\n'),
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'complete-feature', 'proposal.md'),
+        '# Complete Feature\n',
+      );
+      // First add the entry
+      runBash(tmpDir, stateScript, ['index-add', 'complete-feature', 'complete']);
+
+      const result = runBash(tmpDir, stateScript, ['index-complete', 'complete-feature']);
+
+      expect(result.status).toBe(0);
+      const indexContent = await fs.readFile(
+        path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
+        'utf-8',
+      );
+      // Should be in Completed section now
+      const completedSection = indexContent.split('## Completed')[1] || '';
+      expect(completedSection).toContain('Complete Feature');
+    }, 20_000);
+
+    it('conflict-check auto-initializes INDEX.md on first use', async () => {
+      // No INDEX.md exists yet
+      const indexExists = await fs
+        .access(path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'))
+        .then(() => true, () => false);
+      expect(indexExists).toBe(false);
+
+      const result = runBash(tmpDir, stateScript, ['conflict-check', 'new-feature', 'test']);
+
+      expect(result.status).toBe(0);
+      // INDEX.md should now exist
+      const indexContent = await fs.readFile(
+        path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
+        'utf-8',
+      );
+      expect(indexContent).toContain('# Design Registry');
+    }, 20_000);
+
+    it('guard --apply auto-syncs INDEX.md for full workflow', async () => {
+      await createChange(
+        tmpDir,
+        'auto-sync',
+        [
+          'workflow: full',
+          'phase: open',
+          'build_mode: null',
+          'build_pause: null',
+          'tdd_mode: null',
+          'isolation: null',
+          'verify_mode: null',
+          'design_doc: null',
+          'plan: null',
+          'verify_result: pending',
+          'verified_at: null',
+          'archived: false',
+          '',
+        ].join('\n'),
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'auto-sync', 'proposal.md'),
+        '# Auto Sync Feature\n',
+      );
+
+      const result = runBash(tmpDir, guardScript, ['auto-sync', 'open', '--apply']);
+
+      expect(result.status).toBe(0);
+      // INDEX.md should have been created and entry added
+      const indexContent = await fs.readFile(
+        path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
+        'utf-8',
+      );
+      expect(indexContent).toContain('Auto Sync Feature');
+    }, 20_000);
+
+    it('guard --apply archive does not move INDEX entry (handled by comet-archive.sh)', async () => {
+      await createChange(
+        tmpDir,
+        'archive-sync',
+        [
+          'workflow: full',
+          'phase: archive',
+          'build_mode: null',
+          'build_pause: null',
+          'tdd_mode: null',
+          'isolation: null',
+          'verify_mode: null',
+          'design_doc: null',
+          'plan: null',
+          'verify_result: pass',
+          'verified_at: null',
+          'archived: true',
+          '',
+        ].join('\n'),
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'archive-sync', 'proposal.md'),
+        '# Archive Sync Feature\n',
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'archive-sync', 'design.md'),
+        '# Design\n',
+      );
+      // Pre-add entry to In Progress
+      runBash(tmpDir, stateScript, ['index-add', 'archive-sync', 'archive']);
+
+      const result = runBash(tmpDir, guardScript, ['archive-sync', 'archive', '--apply']);
+
+      expect(result.status).toBe(0);
+      const indexContent = await fs.readFile(
+        path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
+        'utf-8',
+      );
+      // Entry should still be in In Progress (guard does not move it)
+      // comet-archive.sh Step 7b handles index-complete
+      const inProgressSection = indexContent.split('## In Progress')[1]?.split('## ')[0] || '';
+      expect(inProgressSection).toContain('Archive Sync Feature');
+    }, 20_000);
+
+    it('guard --apply skips INDEX.md sync for hotfix workflow', async () => {
+      await createChange(
+        tmpDir,
+        'hotfix-skip',
+        [
+          'workflow: hotfix',
+          'phase: open',
+          'build_mode: null',
+          'build_pause: null',
+          'tdd_mode: null',
+          'isolation: null',
+          'verify_mode: null',
+          'design_doc: null',
+          'plan: null',
+          'verify_result: pending',
+          'verified_at: null',
+          'archived: false',
+          '',
+        ].join('\n'),
+      );
+      await writeFile(
+        path.join(tmpDir, 'openspec', 'changes', 'hotfix-skip', 'proposal.md'),
+        '# Hotfix\n',
+      );
+
+      const result = runBash(tmpDir, guardScript, ['hotfix-skip', 'open', '--apply']);
+
+      expect(result.status).toBe(0);
+      // INDEX.md should NOT have been created for hotfix
+      const indexExists = await fs
+        .access(path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'))
+        .then(() => true, () => false);
+      expect(indexExists).toBe(false);
     }, 20_000);
   });
 });
