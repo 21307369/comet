@@ -1003,12 +1003,14 @@ cmd_conflict_check() {
         yellow "INDEX HIT: Keyword '$kw' found in Design Registry — feature: $feature_name" >&2
         if [ -n "$doc_link" ]; then
           local doc_path
-          doc_path=$(echo "$doc_link" | sed 's/\[design\](\(.*\))/\1/')
+          doc_path="${doc_link#\[design\](}"
+          doc_path="${doc_path%)}"
           found_docs="$found_docs\n  - docs/superpowers/$doc_path (INDEX keyword: $kw, feature: $feature_name)"
         fi
         if [ -n "$plan_link" ]; then
           local plan_path
-          plan_path=$(echo "$plan_link" | sed 's/\[plan\](\(.*\))/\1/')
+          plan_path="${plan_link#\[plan\](}"
+          plan_path="${plan_path%)}"
           found_docs="$found_docs\n  - docs/superpowers/$plan_path (INDEX keyword: $kw, feature: $feature_name)"
         fi
         conflicts=$((conflicts + 1))

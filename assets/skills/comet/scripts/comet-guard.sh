@@ -736,7 +736,7 @@ sync_index_registry() {
           awk '{for(i=1;i<=NF && i<=3;i++) printf "%s ", tolower($i)}' | \
           sed 's/[^a-z0-9 ]//g' | awk '{print $1, $2, $3}' || true)
       fi
-      "$COMET_BASH" "$state_sh" index-add "$CHANGE" $keywords || warn "INDEX index-add failed for $CHANGE"
+      "$COMET_BASH" "$state_sh" index-add "$CHANGE" "$keywords" || warn "INDEX index-add failed for $CHANGE"
       ;;
     design)
       # Update design_doc link
