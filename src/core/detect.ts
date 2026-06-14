@@ -87,8 +87,6 @@ async function hasOpenCodeCometCommands(baseDir: string, skillsDir: string, entr
 
   const commandsDir = path.join(baseDir, skillsDir, 'commands');
   const commandEntries = await readDir(commandsDir);
-  // If no commands directory exists, comet skills are incomplete
-  if (commandEntries.length === 0) return false;
   return cometEntries.every((entry) => commandEntries.includes(`${entry}.md`));
 }
 

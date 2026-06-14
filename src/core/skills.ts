@@ -33,8 +33,10 @@ description: Run the {skillName} Comet workflow
 ---
 `;
 
-function getAssetsDir(overrideAssetsDir?: string): string {
-  return overrideAssetsDir ?? path.resolve(__dirname, '..', '..', 'assets');
+const PI_COMMAND_EXTENSION_FILE = 'comet-commands.ts';
+
+function getAssetsDir(): string {
+  return path.resolve(__dirname, '..', '..', 'assets');
 }
 
 async function copyCometSkillsForPlatform(
@@ -43,9 +45,8 @@ async function copyCometSkillsForPlatform(
   overwrite: boolean,
   languageSkillsDir: string = 'skills',
   scope: InstallScope = 'project',
-  assetsDir?: string,
 ): Promise<{ copied: number; skipped: number }> {
-  assetsDir = getAssetsDir(assetsDir);
+  const assetsDir = getAssetsDir();
   const manifestPath = path.join(assetsDir, 'manifest.json');
 
   if (!(await fileExists(manifestPath))) {
@@ -87,7 +88,6 @@ async function copyCometSkillsForPlatform(
       overwrite,
       scope,
       languageSkillsDir,
-      assetsDir,
     );
     copied += result.copied;
     skippedCount += result.skipped;
@@ -204,11 +204,10 @@ async function createOpenCodeCommands(
   overwrite: boolean,
   scope: InstallScope,
   languageSkillsDir: string,
-  assetsDir?: string,
 ): Promise<{ copied: number; skipped: number }> {
   let copied = 0;
   let skipped = 0;
-  assetsDir = getAssetsDir(assetsDir);
+  const assetsDir = getAssetsDir();
   const commandsDir = path.join(baseDir, getPlatformSkillsDir(platform, scope), 'commands');
 
   for (const skillPath of skillPaths) {
@@ -248,14 +247,14 @@ ${skillBody}
   return { copied, skipped };
 }
 
-async function readManifest(assetsDir?: string): Promise<Manifest> {
-  assetsDir = getAssetsDir(assetsDir);
+async function readManifest(): Promise<Manifest> {
+  const assetsDir = getAssetsDir();
   const manifestPath = path.join(assetsDir, 'manifest.json');
   return readJson<Manifest>(manifestPath);
 }
 
-async function getManifestSkills(assetsDir?: string): Promise<string[]> {
-  const manifest = await readManifest(assetsDir);
+async function getManifestSkills(): Promise<string[]> {
+  const manifest = await readManifest();
   return manifest.skills;
 }
 
@@ -272,19 +271,18 @@ async function copyCometRulesForPlatform(
   platform: Platform,
   overwrite: boolean,
   scope: InstallScope = 'project',
-  assetsDir?: string,
 ): Promise<{ copied: number; skipped: number }> {
   if (!platform.rulesDir || !platform.rulesFormat) {
     return { copied: 0, skipped: 0 };
   }
 
-  const manifest = await readManifest(assetsDir);
+  const manifest = await readManifest();
   const rulePaths = manifest.rules;
   if (!rulePaths || rulePaths.length === 0) {
     return { copied: 0, skipped: 0 };
   }
 
-  assetsDir = getAssetsDir(assetsDir);
+  const assetsDir = getAssetsDir();
   // Support platforms whose rules live outside the skills config dir
   // (e.g., Cline: rules go to .clinerules/ at project root, not .cline/rules/)
   const rulesBase =
@@ -379,13 +377,12 @@ async function installCometHooksForPlatform(
   baseDir: string,
   platform: Platform,
   scope: InstallScope = 'project',
-  assetsDir?: string,
 ): Promise<{ installed: boolean; reason?: string }> {
   if (!platform.supportsHooks || !platform.hookFormat) {
     return { installed: false, reason: 'platform does not support hooks' };
   }
 
-  const manifest = await readManifest(assetsDir);
+  const manifest = await readManifest();
   const hooksConfig = manifest.hooks;
   if (!hooksConfig || Object.keys(hooksConfig).length === 0) {
     return { installed: false, reason: 'no hooks defined in manifest' };

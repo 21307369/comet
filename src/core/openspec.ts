@@ -233,59 +233,6 @@ function migrateOpenCodeOpenSpecPaths(homeDir: string): void {
   }
 }
 
-function migratePiOpenSpecPaths(homeDir: string): void {
-  const piPlatform = PLATFORMS.find((p) => p.id === 'pi');
-  if (!piPlatform?.globalSkillsDir) return;
-
-  // OpenSpec hardcodes skillsDir as '.pi' in its AI_TOOLS, so it writes
-  // to ~/.pi/ even for global installs. Pi actually reads from
-  // ~/.agents/ (Comet's globalSkillsDir). Move the OpenSpec files over.
-  const wrongDir = path.join(homeDir, piPlatform.skillsDir);
-  const correctDir = path.join(homeDir, piPlatform.globalSkillsDir);
-
-  if (wrongDir === correctDir) return;
-
-  const migrations: Array<[string, string, string]> = [
-    [path.join(wrongDir, 'skills'), path.join(correctDir, 'skills'), 'skills'],
-    [path.join(wrongDir, 'commands'), path.join(correctDir, 'commands'), 'commands'],
-  ];
-
-  for (const [srcDir, destDir, label] of migrations) {
-    if (srcDir === destDir) continue;
-    if (!fs.existsSync(srcDir)) continue;
-    try {
-      const entries = fs.readdirSync(srcDir);
-      if (entries.length === 0) continue;
-
-      fs.mkdirSync(destDir, { recursive: true });
-      for (const entry of entries) {
-        const srcPath = path.join(srcDir, entry);
-        const destPath = path.join(destDir, entry);
-        fs.cpSync(srcPath, destPath, { recursive: true, force: true });
-      }
-      // Remove source after successful copy
-      fs.rmSync(srcDir, { recursive: true, force: true });
-      console.log(`    Migrated OpenSpec ${label} from ${srcDir} to ${destDir}`);
-    } catch (error) {
-      console.error(
-        `    Warning: failed to migrate OpenSpec ${label} from ${srcDir} to ${destDir}: ${(error as Error).message}`,
-      );
-    }
-  }
-
-  // Remove wrong parent directory if empty
-  if (fs.existsSync(wrongDir)) {
-    try {
-      const remaining = fs.readdirSync(wrongDir);
-      if (remaining.length === 0) {
-        fs.rmdirSync(wrongDir);
-      }
-    } catch {
-      // Best-effort cleanup
-    }
-  }
-}
-
 async function installOpenSpec(
   projectPath: string,
   toolIds: string[],
@@ -344,13 +291,8 @@ async function installOpenSpec(
       }
     }
 
-    if (scope === 'global') {
-      if (toolIds.includes('opencode')) {
-        migrateOpenCodeOpenSpecPaths(os.homedir());
-      }
-      if (toolIds.includes('pi')) {
-        migratePiOpenSpecPaths(os.homedir());
-      }
+    if (scope === 'global' && toolIds.includes('opencode')) {
+      migrateOpenCodeOpenSpecPaths(os.homedir());
     }
 
     return 'installed';
@@ -372,5 +314,4 @@ export {
   buildOpenSpecInitInvocation,
   getNpmExecutable,
   migrateOpenCodeOpenSpecPaths,
-  migratePiOpenSpecPaths,
 };
