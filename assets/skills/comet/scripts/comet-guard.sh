@@ -739,23 +739,16 @@ sync_index_registry() {
       "$COMET_BASH" "$state_sh" index-add "$CHANGE" "$keywords" || warn "INDEX index-add failed for $CHANGE"
       ;;
     design)
-      # Update design_doc link
-      local design_doc
-      design_doc=$(yaml_field_value "design_doc" 2>/dev/null || true)
-      if [ -n "$design_doc" ] && [ "$design_doc" != "null" ]; then
-        "$COMET_BASH" "$state_sh" index-update "$CHANGE" design_doc "$design_doc" || warn "INDEX index-update design_doc failed for $CHANGE"
-      fi
+      # Update status to designing
+      "$COMET_BASH" "$state_sh" index-update "$CHANGE" status "designing" || warn "INDEX index-update status failed for $CHANGE"
       ;;
     build)
-      # Update plan link
-      local plan
-      plan=$(yaml_field_value "plan" 2>/dev/null || true)
-      if [ -n "$plan" ] && [ "$plan" != "null" ]; then
-        "$COMET_BASH" "$state_sh" index-update "$CHANGE" plan "$plan" || warn "INDEX index-update plan failed for $CHANGE"
-      fi
+      # Update status to building
+      "$COMET_BASH" "$state_sh" index-update "$CHANGE" status "building" || warn "INDEX index-update status failed for $CHANGE"
       ;;
     verify)
-      # No INDEX update needed for verify phase
+      # Update status to verifying
+      "$COMET_BASH" "$state_sh" index-update "$CHANGE" status "verifying" || warn "INDEX index-update status failed for $CHANGE"
       ;;
     archive)
       # No INDEX update here — comet-archive.sh Step 7b handles index-complete

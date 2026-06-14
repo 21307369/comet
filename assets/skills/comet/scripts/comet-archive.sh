@@ -302,7 +302,7 @@ if [ "$WORKFLOW_VAL" = "full" ] && [ -f "docs/superpowers/INDEX.md" ]; then
   if [ "$DRY_RUN" -eq 1 ]; then
     step_dry_run "Would run index-complete for $CHANGE"
   else
-    if "$COMET_BASH" "$STATE_SH" index-complete "$CHANGE"; then
+    if "$COMET_BASH" "$STATE_SH" index-complete "$CHANGE" "$ARCHIVE_DIR"; then
       step_ok "INDEX.md updated (index-complete)"
     else
       yellow "WARNING: Failed to update INDEX.md (index-complete) for $CHANGE"

@@ -1300,19 +1300,19 @@ cmd_index_init() {
 
   mkdir -p "$(dirname "$INDEX_FILE")"
   cat > "$INDEX_FILE" << 'INDEXEOF'
-# Design Registry
+# Feature Index
 
-This file tracks all design documents and plans to prevent duplicate feature designs.
+This file tracks implemented features to prevent duplicate designs and provide change history.
 
 ## In Progress
 
-| Date | Feature | [design] | [plan] | Keywords |
-|------|---------|----------|--------|----------|
+| Date | Feature | Status | Keywords | Description | Archive |
+|------|---------|--------|----------|-------------|---------|
 
 ## Completed
 
-| Date | Feature | [design] | [plan] | Keywords |
-|------|---------|----------|--------|----------|
+| Date | Feature | Status | Keywords | Description | Archive |
+|------|---------|--------|----------|-------------|---------|
 INDEXEOF
 
   green "Created $INDEX_FILE with standard structure"
@@ -1330,12 +1330,6 @@ cmd_index_add() {
     cmd_index_init
   fi
 
-  # Check if entry already exists
-  if grep -q "| $change_name |" "$INDEX_FILE" 2>/dev/null; then
-    yellow "Entry for '$change_name' already exists in INDEX.md"
-    return 0
-  fi
-
   # Get date from .comet.yaml or use today
   local date
   local yaml_file="openspec/changes/$change_name/.comet.yaml"
@@ -1346,15 +1340,33 @@ cmd_index_add() {
     date=$(date +%Y-%m-%d)
   fi
 
-  # Extract feature name from proposal.md title
+  # Extract feature name and description from proposal.md
   local feature="$change_name"
+  local description=""
   local proposal="openspec/changes/$change_name/proposal.md"
   if [ -f "$proposal" ]; then
+    # Get title (first # heading)
     local title
-    title=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' || true)
+    title=$(grep -E '^# ' "$proposal" | head -1 | sed 's/^# *//' || true)
     if [ -n "$title" ]; then
       feature="$title"
     fi
+    # Get description (first paragraph after title, skip empty lines)
+    description=$(awk '/^# /{found=1; next} found && /^$/{next} found && /^[^#]/ && !/^\|/{print; exit}' "$proposal" || true)
+    if [ -z "$description" ]; then
+      # Fallback: get first non-empty, non-heading line
+      description=$(grep -v '^#' "$proposal" | grep -v '^$' | grep -v '^|' | head -1 || true)
+    fi
+    # Truncate description if too long (max 60 chars)
+    if [ ${#description} -gt 60 ]; then
+      description="${description:0:57}..."
+    fi
+  fi
+
+  # Check if entry already exists (match by feature name in column 2)
+  if awk -v name="$feature" 'BEGIN{FS="|"} {gsub(/^[ \t]+|[ \t]+$/, "", $2); if($2 == name) found=1} END{exit !found}' "$INDEX_FILE" 2>/dev/null; then
+    yellow "Entry for '$feature' already exists in INDEX.md"
+    return 0
   fi
 
   # Format keywords with backticks
@@ -1368,23 +1380,23 @@ cmd_index_add() {
     done
   fi
 
-  # Build the row: | Date | Feature | - | - | Keywords |
-  local row="| $date | $feature | - | - | $kw_formatted |"
+  # Build the row: | Date | Feature | Status | Keywords | Description | Archive |
+  local status="in-progress"
+  local row="| $date | $feature | $status | $kw_formatted | $description | - |"
 
-  # Insert before the empty line after "In Progress" header row
-  # Use awk to find the "## In Progress" section and insert after the header row
+  # Insert after the header row in "In Progress" section
   awk -v row="$row" '
     /^## In Progress$/ { in_progress=1; print; next }
     in_progress && /^\| Date/ { print; getline; print; print row; in_progress=0; next }
     { print }
   ' "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
 
-  green "Added '$change_name' to INDEX.md In Progress"
+  green "Added '$feature' to INDEX.md In Progress"
 }
 
-# Update an existing entry with design_doc or plan path
+# Update status or description for an existing entry
 # Usage: index-update <change-name> <field> <value>
-# field: design_doc | plan
+# field: status | description
 cmd_index_update() {
   local change_name="$1"
   local field="$2"
@@ -1395,68 +1407,54 @@ cmd_index_update() {
     return 0
   fi
 
-  # Get feature name from proposal
+  # Extract feature name from proposal
   local feature="$change_name"
   local proposal="openspec/changes/$change_name/proposal.md"
   if [ -f "$proposal" ]; then
     local title
-    title=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' || true)
+    title=$(grep -E '^# ' "$proposal" | head -1 | sed 's/^# *//' || true)
     if [ -n "$title" ]; then
       feature="$title"
     fi
   fi
 
-  # Check if entry exists (by change name or feature name)
-  if ! grep -qF "$change_name" "$INDEX_FILE" 2>/dev/null && \
-     ! grep -qF "$feature" "$INDEX_FILE" 2>/dev/null; then
-    yellow "Entry for '$change_name' not found in INDEX.md, adding new entry"
+  # Check if entry exists (match by feature name in column 2)
+  if ! awk -v name="$feature" 'BEGIN{FS="|"} {gsub(/^[ \t]+|[ \t]+$/, "", $2); if($2 == name) found=1} END{exit !found}' "$INDEX_FILE" 2>/dev/null; then
+    yellow "Entry for '$feature' not found in INDEX.md, adding new entry"
     cmd_index_add "$change_name"
   fi
 
-  # Build the link: [design](path) or [plan](path)
-  local link_type
-  case "$field" in
-    design_doc|design) link_type="design" ;;
-    plan) link_type="plan" ;;
-    *) red "Unknown field: $field (expected design_doc or plan)" >&2; return 1 ;;
-  esac
-
-  local link="[$link_type]($value)"
-
-  # Determine which column to update (4th for design, 5th for plan)
+  # Determine which column to update
   local col
-  case "$link_type" in
-    design) col=4 ;;
-    plan) col=5 ;;
+  case "$field" in
+    status) col=3 ;;
+    description) col=5 ;;
+    *) red "Unknown field: $field (expected status or description)" >&2; return 1 ;;
   esac
 
-  # Use awk to update the specific column for matching row
-  # Match by change name OR feature name using exact match (not regex)
-  awk -v change="$change_name" -v feature="$feature" -v col="$col" -v link="$link" '
+  # Use awk to update the specific column for matching row (match by column 2)
+  awk -v feature="$feature" -v col="$col" -v value="$value" '
     BEGIN { FS="|"; OFS="|" }
     {
-      # Extract and trim column 3 for exact match
-      col3 = $3
-      gsub(/^[ \t]+|[ \t]+$/, "", col3)
-      # Check if this row matches change name or feature name exactly in column 3
-      if (col3 == change || col3 == feature) {
-        # Only update if current value is "-" or empty
-        gsub(/^[ \t]+|[ \t]+$/, "", $col)
-        if ($col == "-" || $col == "") {
-          $col = " " link " "
-        }
+      # Extract and trim column 2 for exact match
+      col2 = $2
+      gsub(/^[ \t]+|[ \t]+$/, "", col2)
+      # Check if this row matches feature name exactly in column 2
+      if (col2 == feature) {
+        $col = " " value " "
       }
       print
     }
   ' "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
 
-  green "Updated $link_type link for '$change_name' in INDEX.md"
+  green "Updated $field for '$feature' in INDEX.md"
 }
 
 # Move entry from "In Progress" to "Completed"
-# Usage: index-complete <change-name>
+# Usage: index-complete <change-name> [archive-path]
 cmd_index_complete() {
   local change_name="$1"
+  local archive_path="$2"
 
   if [ ! -f "$INDEX_FILE" ]; then
     yellow "INDEX.md does not exist, nothing to complete"
@@ -1468,7 +1466,7 @@ cmd_index_complete() {
   local proposal="openspec/changes/$change_name/proposal.md"
   if [ -f "$proposal" ]; then
     local title
-    title=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' || true)
+    title=$(grep -E '^# ' "$proposal" | head -1 | sed 's/^# *//' || true)
     if [ -n "$title" ]; then
       feature="$title"
     fi
@@ -1478,42 +1476,49 @@ cmd_index_complete() {
   local date
   date=$(date +%Y-%m-%d)
 
-  # Extract the row from "In Progress" section (match by exact column 3 value)
+  # Extract the row from "In Progress" section (match by exact column 2 value)
   local row
-  row=$(awk -v change="$change_name" -v feature="$feature" '
+  row=$(awk -v feature="$feature" '
     BEGIN { FS="|"; found=0 }
     /^## In Progress$/ { in_progress=1; next }
     /^## / { in_progress=0 }
     in_progress {
-      col3 = $3
-      gsub(/^[ \t]+|[ \t]+$/, "", col3)
-      if (col3 == change || col3 == feature) { print; found=1; exit }
+      col2 = $2
+      gsub(/^[ \t]+|[ \t]+$/, "", col2)
+      if (col2 == feature) { print; found=1; exit }
     }
   ' "$INDEX_FILE")
 
   if [ -z "$row" ]; then
-    yellow "Entry for '$change_name' not found in In Progress"
+    yellow "Entry for '$feature' not found in In Progress"
     return 0
   fi
 
-  # Update the date in the row to archive date
+  # Update the row: Date (col 1), Status (col 3), Archive (col 6)
   local completed_row
-  completed_row=$(echo "$row" | awk -v date="$date" '
+  completed_row=$(echo "$row" | awk -v date="$date" -v archive="$archive_path" '
     BEGIN { FS="|"; OFS="|" }
-    { $2 = " " date " "; print }
+    {
+      $1 = " " date " "
+      $3 = " completed "
+      if (archive != "" && archive != "-") {
+        $6 = " " archive " "
+      }
+      print
+    }
   ')
 
   # Remove from In Progress and add to Completed
-  awk -v change="$change_name" -v feature="$feature" -v completed="$completed_row" '
-    BEGIN { FS="|"; OFS="|"; removed=0 }
+  awk -v feature="$feature" -v completed="$completed_row" '
+    BEGIN { FS="|"; OFS="|" }
     /^## Completed$/ { in_completed=1 }
     /^## / && !/^## Completed$/ { in_completed=0 }
-    # Remove matching row from In Progress (exact match on column 3)
+    # Remove matching row from In Progress (exact match on column 2)
     /^## In Progress$/ { in_progress=1; print; next }
     in_progress {
-      col3 = $3
-      gsub(/^[ \t]+|[ \t]+$/, "", col3)
-      if (col3 == change || col3 == feature) { in_progress=0; next }
+      col2 = $2
+      gsub(/^[ \t]+|[ \t]+$/, "", col2)
+      if (col2 == feature) { in_progress=0; next }
     }
     /^## / { in_progress=0 }
     # Add completed row after Completed header row
@@ -1521,7 +1526,7 @@ cmd_index_complete() {
     { print }
   ' "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
 
-  green "Moved '$change_name' from In Progress to Completed in INDEX.md"
+  green "Moved '$feature' from In Progress to Completed in INDEX.md"
 }
 
 # Clean stale entries (change directory no longer exists)
@@ -1533,14 +1538,15 @@ cmd_index_clean_stale() {
   local stale_count=0
 
   # Find entries in "In Progress" where change dir doesn't exist
+  # Extract feature name from column 2
   awk '
     BEGIN { FS="|" }
     /^## In Progress$/ { in_progress=1; next }
     /^## / { in_progress=0 }
     in_progress && /^\| [0-9]/ {
-      # Extract feature name (3rd column)
-      gsub(/^[ \t]+|[ \t]+$/, "", $3)
-      print $3
+      # Extract feature name (2nd column)
+      gsub(/^[ \t]+|[ \t]+$/, "", $2)
+      print $2
     }
   ' "$INDEX_FILE" | while read -r feature; do
     # Try to find matching change directory
@@ -1559,7 +1565,7 @@ cmd_index_clean_stale() {
         local proposal="$dir/proposal.md"
         if [ -f "$proposal" ]; then
           local title
-          title=$(head -5 "$proposal" | grep -E '^#' | head -1 | sed 's/^#* *//' || true)
+          title=$(grep -E '^# ' "$proposal" | head -1 | sed 's/^# *//' || true)
           if [ "$title" = "$feature" ]; then
             found=1
             break
@@ -1575,13 +1581,13 @@ cmd_index_clean_stale() {
   if [ -s /tmp/comet-stale-features.txt ]; then
     while read -r stale_feature; do
       yellow "Stale entry found: '$stale_feature' (change directory no longer exists)"
-      # Remove the stale row using exact match (not regex)
+      # Remove the stale row using exact match on column 2
       awk -v feature="$stale_feature" '
         BEGIN { FS="|" }
         {
-          col3 = $3
-          gsub(/^[ \t]+|[ \t]+$/, "", col3)
-          if (col3 == feature) next
+          col2 = $2
+          gsub(/^[ \t]+|[ \t]+$/, "", col2)
+          if (col2 == feature) next
         }
         { print }
       ' "$INDEX_FILE" > "$INDEX_FILE.tmp" && mv "$INDEX_FILE.tmp" "$INDEX_FILE"
