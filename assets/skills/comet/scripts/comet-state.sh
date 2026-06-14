@@ -1461,10 +1461,26 @@ cmd_index_complete() {
     return 0
   fi
 
-  # Get feature name from proposal
+  # Get feature name from proposal (check original path first, then archive path)
   local feature="$change_name"
-  local proposal="openspec/changes/$change_name/proposal.md"
-  if [ -f "$proposal" ]; then
+  local proposal=""
+  
+  # Try original path first
+  if [ -f "openspec/changes/$change_name/proposal.md" ]; then
+    proposal="openspec/changes/$change_name/proposal.md"
+  # Try archive path if provided
+  elif [ -n "$archive_path" ] && [ -f "$archive_path/proposal.md" ]; then
+    proposal="$archive_path/proposal.md"
+  # Search in archive directory by pattern
+  elif [ -d "openspec/changes/archive" ]; then
+    local found_dir
+    found_dir=$(find "openspec/changes/archive" -maxdepth 1 -type d -name "*-$change_name" 2>/dev/null | head -1)
+    if [ -n "$found_dir" ] && [ -f "$found_dir/proposal.md" ]; then
+      proposal="$found_dir/proposal.md"
+    fi
+  fi
+  
+  if [ -n "$proposal" ]; then
     local title
     title=$(grep -E '^# ' "$proposal" | head -1 | sed 's/^# *//' || true)
     if [ -n "$title" ]; then
@@ -1549,19 +1565,48 @@ cmd_index_clean_stale() {
       print $2
     }
   ' "$INDEX_FILE" | while read -r feature; do
-    # Try to find matching change directory
+    # Try to find matching change directory (check both active and archived)
     local found=0
-    if [ -d "openspec/changes" ]; then
+    
+    # Check active changes
+    if [ -d "openspec/changes/$feature" ]; then
+      found=1
+    elif [ -d "openspec/changes" ]; then
       for dir in openspec/changes/*/; do
         [ -d "$dir" ] || continue
         local name
         name=$(basename "$dir")
         [ "$name" = "archive" ] && continue
-        # Check if feature matches change name or proposal title
+        # Check if feature matches change name
         if [ "$name" = "$feature" ]; then
           found=1
           break
         fi
+        # Check proposal title
+        local proposal="$dir/proposal.md"
+        if [ -f "$proposal" ]; then
+          local title
+          title=$(grep -E '^# ' "$proposal" | head -1 | sed 's/^# *//' || true)
+          if [ "$title" = "$feature" ]; then
+            found=1
+            break
+          fi
+        fi
+      done
+    fi
+    
+    # Check archived changes if not found in active
+    if [ "$found" -eq 0 ] && [ -d "openspec/changes/archive" ]; then
+      for dir in openspec/changes/archive/*/; do
+        [ -d "$dir" ] || continue
+        local name
+        name=$(basename "$dir")
+        # Archive format: YYYY-MM-DD-change-name
+        if [[ "$name" == *-"$feature" ]]; then
+          found=1
+          break
+        fi
+        # Check proposal title
         local proposal="$dir/proposal.md"
         if [ -f "$proposal" ]; then
           local title
