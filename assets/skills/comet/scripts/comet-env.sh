@@ -16,9 +16,10 @@ export COMET_STATE="${COMET_STATE:-${_comet_script_dir}/comet-state.sh}"
 export COMET_HANDOFF="${COMET_HANDOFF:-${_comet_script_dir}/comet-handoff.sh}"
 export COMET_ARCHIVE="${COMET_ARCHIVE:-${_comet_script_dir}/comet-archive.sh}"
 export COMET_YAML_VALIDATE="${COMET_YAML_VALIDATE:-${_comet_script_dir}/comet-yaml-validate.sh}"
-
-# Global preferences directory
-export COMET_GLOBAL_CONFIG="${COMET_GLOBAL_CONFIG:-${HOME}/.comet}"
+# Global preferences file (follows skill installation directory)
+# Located in the comet skill directory, e.g., ~/.agents/skills/comet/config.yaml
+_comet_skill_dir="$(cd "${_comet_script_dir}/.." && pwd)"
+export COMET_GLOBAL_CONFIG="${COMET_GLOBAL_CONFIG:-${_comet_skill_dir}/config.yaml}"
 
 _comet_bash_is_usable() {
   local _comet_bash_candidate="$1"

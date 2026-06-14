@@ -126,7 +126,28 @@ Plan 生成后、进入 plan-ready 暂停点前，必须通过独立审查子代
 
 然后继续本步骤选择工作区隔离和执行方式。
 
-计划已写入当前分支。在开始执行前，**一次性询问用户**选择工作区隔离方式和执行方式：
+**首先检查全局偏好**：
+
+```bash
+PREFERRED_BUILD_MODE=$("$COMET_BASH" "$COMET_STATE" get-preference preferred_build_mode)
+PREFERRED_ISOLATION=$("$COMET_BASH" "$COMET_STATE" get-preference preferred_isolation)
+PREFERRED_TDD_MODE=$("$COMET_BASH" "$COMET_STATE" get-preference preferred_tdd_mode)
+```
+
+如果三个偏好都在 comet 技能的 `config.yaml`（例如 `~/.agents/skills/comet/config.yaml`）中设置，直接使用它们而不询问用户。应用偏好：
+
+```bash
+"$COMET_BASH" "$COMET_STATE" set <name> isolation "$PREFERRED_ISOLATION"
+"$COMET_BASH" "$COMET_STATE" set <name> build_mode "$PREFERRED_BUILD_MODE"
+"$COMET_BASH" "$COMET_STATE" set <name> tdd_mode "$PREFERRED_TDD_MODE"
+if [ "$PREFERRED_BUILD_MODE" = "subagent-driven-development" ]; then
+  "$COMET_BASH" "$COMET_STATE" set <name> subagent_dispatch confirmed
+fi
+```
+
+然后继续执行隔离（步骤 3.1）。
+
+如果缺少任何偏好，询问用户选择并可选择保存到全局配置：
 
 **工作区隔离**：
 

@@ -1648,11 +1648,11 @@ cmd_index_clean_stale() {
   rm -f /tmp/comet-stale-features.txt
 }
 
-# Read global preference from ~/.comet/config.yaml
+# Read global preference from comet skill directory
 # Usage: get-preference <field>
 cmd_get_preference() {
   local field="$1"
-  local config_file="${COMET_GLOBAL_CONFIG:-$HOME/.comet}/config.yaml"
+  local config_file="${COMET_GLOBAL_CONFIG:-}"
   
   if [ ! -f "$config_file" ]; then
     return 0

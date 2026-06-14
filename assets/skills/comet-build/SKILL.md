@@ -134,7 +134,7 @@ PREFERRED_ISOLATION=$("$COMET_BASH" "$COMET_STATE" get-preference preferred_isol
 PREFERRED_TDD_MODE=$("$COMET_BASH" "$COMET_STATE" get-preference preferred_tdd_mode)
 ```
 
-If all three preferences are set in `~/.comet/config.yaml`, use them directly without asking the user. Apply the preferences:
+If all three preferences are set in the comet skill's `config.yaml` (e.g., `~/.agents/skills/comet/config.yaml`), use them directly without asking the user. Apply the preferences:
 
 ```bash
 "$COMET_BASH" "$COMET_STATE" set <name> isolation "$PREFERRED_ISOLATION"

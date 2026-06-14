@@ -1,0 +1,15 @@
+# Comet Global Preferences
+# This file is located in the comet skill directory
+# Users can edit this file to set their preferred workflow options
+
+# Preferred build mode
+# Options: subagent-driven-development | executing-plans
+preferred_build_mode: subagent-driven-development
+
+# Preferred workspace isolation
+# Options: branch | worktree
+preferred_isolation: branch
+
+# Preferred TDD mode
+# Options: tdd | direct
+preferred_tdd_mode: tdd
