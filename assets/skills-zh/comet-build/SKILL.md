@@ -46,6 +46,7 @@ fi
 计划要求：
 - 保存至 `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`
 - 引用设计文档，拆分为可执行任务
+- 遵循产物收敛原则：先读实际代码，任务引用具体文件路径和已有接口，接口签名写代码、实现逻辑用伪代码
 - **Plan 文件头必须包含关联元数据**：
 
 ```yaml
@@ -70,6 +71,16 @@ Subagent 完成后：
 - 若返回有效文件路径且文件存在，记录为 plan
 - 若 subagent 失败或返回路径无效，在主 session 内联加载 Superpowers `writing-plans` 技能创建计划（降级回退）
 
+### 1b. 独立审查 Spec 和 Plan（Review Plan Gate）
+
+Plan 生成后、进入 plan-ready 暂停点前，必须通过独立审查子代理检查 spec 和 plan 的质量。此步骤通过**全新 context 的子代理**打破同源性偏差——原流程中 proposal → design → tasks → plan 由同一会话产出，容易"一致地错但看起来自洽"。
+
+**立即执行：** 使用 Skill 工具加载 `comet-review-plan` 技能。禁止跳过此步骤。若该技能不可用，跳过审查 gate 但必须在 tasks.md 中记录 `<!-- review-plan skipped: skill unavailable -->`，然后继续 Step 2。
+
+技能加载后，按 `/comet-review-plan` 的指引执行审查。默认使用 `spec+plan` 模式。审查完成后（pass 或用户选择接受风险），继续 Step 2。
+
+**降级处理**：若当前平台无 subagent 调度能力，按 `comet-review-plan` 的降级处理执行（主会话内审查，独立性降低）。
+
 ### 2. 更新计划状态并提供 plan-ready 暂停点
 
 先记录 plan 路径：
@@ -80,6 +91,8 @@ Subagent 完成后：
 
 无需手动更新 phase，阶段守卫（guard `--apply`）会在退出条件满足后推进 `phase` 字段。
 
+**INDEX.md 自动同步**：`guard --apply` 推进 build 阶段时，脚本会自动调用 `index-update` 将 `plan` 链接写入 INDEX.md 的「进行中」条目。无需手动编辑 INDEX.md。
+
 计划写入后，立即提供一个新的用户决策点：
 
 | 选项 | 行为 | 说明 |
@@ -87,7 +100,7 @@ Subagent 完成后：
 | A | 继续执行 | 保持在当前模型中，进入 Step 3 选择工作区隔离和执行方式 |
 | B | 暂停切换模型 | 记录 `build_pause: plan-ready`，本次 `/comet-build` 停止，用户稍后可从 `/comet` 或 `/comet-build` 恢复 |
 
-这是用户决策点。**必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户明确选择**，不得自动继续，也不得把暂停写入 `build_mode`。
+这是用户决策点。按主 skill 阻塞点规则暂停等待用户明确选择，不得自动继续，也不得把暂停写入 `build_mode`。
 
 用户选择继续时：
 
@@ -138,7 +151,7 @@ Subagent 完成后：
 - 任务数 ≤ 2 且无跨模块依赖 → 推荐 B
 - 来自 hotfix 路径 → 推荐 B
 
-这是用户决策点。**必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户明确选择隔离方式、执行方式和 TDD 模式**，不得根据推荐规则自行选择 `branch` 或 `worktree`，也不得根据推荐规则自行选择执行方式或 TDD 模式。推荐规则只能用于说明建议，不能替代用户确认。
+这是用户决策点。按主 skill 阻塞点规则暂停等待用户明确选择隔离方式、执行方式和 TDD 模式，不得根据推荐规则自行选择。推荐规则只能用于说明建议，不能替代用户确认。
 
 用户选择后，更新 `isolation`、执行方式和 TDD 模式相关字段：
 
@@ -176,7 +189,7 @@ Subagent 完成后：
 
 **执行隔离**：
 
-- **branch**：根据 workflow 类型和当前日期推荐分支名，然后让用户确认或输入自定义名称。这是用户决策点——**必须使用当前平台可用的用户输入/确认机制暂停并等待用户明确确认或覆盖分支名**，不得跳过此步骤直接创建分支。
+- **branch**：根据 workflow 类型和当前日期推荐分支名，然后让用户确认或输入自定义名称。这是用户决策点——按主 skill 阻塞点规则暂停等待用户明确确认或覆盖分支名，不得跳过此步骤直接创建分支。
 
   分支命名规范：
   - 读取 `.comet.yaml` 的 `workflow` 字段确定前缀
@@ -235,10 +248,10 @@ git commit -m "chore: add implementation plan"
 | 规模 | 触发条件 | 做法 |
 |------|---------|------|
 | 小 | 遗漏验收场景、边界条件 | 直接编辑 delta spec + design.md，追加 tasks.md 任务 |
-| 中 | 接口变更、新增组件、数据流变化 | **使用当前平台可用的用户输入/确认机制暂停并等待用户确认后**，必须使用 Skill 工具加载 Superpowers `brainstorming` 更新 Design Doc + delta spec |
-| 大 | 全新 capability 需求 | **必须使用当前平台可用的用户输入/确认机制暂停并等待用户确认拆分**；用户确认后，通过 `/comet-open` 创建独立 change |
+| 中 | 接口变更、新增组件、数据流变化 | 按主 skill 阻塞点规则暂停等待用户确认后，必须使用 Skill 工具加载 Superpowers `brainstorming` 更新 Design Doc + delta spec |
+| 大 | 全新 capability 需求 | 按主 skill 阻塞点规则暂停等待用户确认拆分；用户确认后，通过 `/comet-open` 创建独立 change |
 
-**50% 阈值判定**：以 tasks.md 初始任务总数为基准，若新增任务数超过该总数的一半，视为超出原计划范围，**必须按 `comet/reference/decision-point.md` 的协议暂停并等待用户决定是否拆分为新 change**。
+**50% 阈值判定**：以 tasks.md 初始任务总数为基准，若新增任务数超过该总数的一半，视为超出原计划范围，按主 skill 阻塞点规则暂停等待用户决定是否拆分为新 change。
 
 创建独立 change 时必须调用 `/comet-open`，不得直接调用 `/opsx:new`。`/comet-open` 会同时创建 OpenSpec 产物和 `.comet.yaml`，避免新 change 脱离 Comet 状态机。
 
@@ -293,12 +306,4 @@ verify_command: <verify command>
 
 ## 自动衔接下一阶段
 
-按 `comet/reference/auto-transition.md` 执行。关键命令：
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-- `NEXT: auto` → 调用 `SKILL` 指向的 skill 进入下一阶段
-- `NEXT: manual` → 不要调用下一 skill，按 `HINT` 提示用户手动运行 `/<SKILL>`
-- `NEXT: done` → 流程已完成，无需继续
+按主 skill「共享规则 → 自动衔接下一阶段」执行。

@@ -81,10 +81,9 @@ skills-lock.json
 .aws/
 .gcp/
 .agents/
+.pi/
 
 # Superpowers docs (local only)
 docs/superpowers/
 
 .codegraph/
-
-.comet/

@@ -46,6 +46,7 @@ You are an implementation planning expert. Create an implementation plan based o
 Plan requirements:
 - Save to `docs/superpowers/plans/YYYY-MM-DD-<feature>.md`
 - Reference design document, break down into executable tasks
+- Follow Product Convergence Principle: read actual code first, tasks reference specific file paths and existing interfaces, write interface signatures as code, use pseudocode for implementation logic
 - **Plan file header must contain associated metadata**:
 
 ```yaml
@@ -70,6 +71,16 @@ After the subagent completes:
 - If a valid file path is returned and the file exists, record it as the plan
 - If the subagent fails or returns an invalid path, fall back to loading the Superpowers `writing-plans` skill inline in the main session (degraded fallback)
 
+### 1b. Independent Spec and Plan Review (Review Plan Gate)
+
+After plan generation and before the plan-ready pause point, the plan must pass an independent review subagent to check spec and plan quality. This step uses a **fresh-context subagent** to break same-source bias — in the original flow, proposal → design → tasks → plan are produced by the same session, making them "consistently wrong but internally consistent."
+
+**Immediately execute:** Use the Skill tool to load the `comet-review-plan` skill. Skipping this step is prohibited. If the skill is unavailable, skip the review gate but must record `<!-- review-plan skipped: skill unavailable -->` in tasks.md, then continue to Step 2.
+
+After the skill loads, follow `/comet-review-plan` guidance. Default mode is `spec+plan`. After review completes (pass or user accepts risk), continue to Step 2.
+
+**Degraded fallback**: If the current platform lacks subagent dispatch capability, follow `comet-review-plan`'s degraded handling (main session review, reduced independence).
+
 ### 2. Update Plan Status and Provide Plan-Ready Pause Point
 
 Record plan path:
@@ -80,6 +91,8 @@ Record plan path:
 
 No manual phase update needed — guard auto-transitions when exit conditions are met.
 
+**INDEX.md auto-sync**: When `guard --apply` advances the build phase, the script automatically calls `index-update` to write the `plan` link into the "In Progress" entry in INDEX.md. No manual INDEX.md editing required.
+
 After the plan is recorded, immediately provide a new user decision point:
 
 | Option | Behavior | Description |
@@ -87,7 +100,7 @@ After the plan is recorded, immediately provide a new user decision point:
 | A | Continue execution | Stay in the current model and proceed to Step 3 to choose workspace isolation and execution method |
 | B | Pause to switch model | Record `build_pause: plan-ready`, stop this `/comet-build` invocation, and allow the user to resume later from `/comet` or `/comet-build` |
 
-This is a user decision point. **Must follow the `comet/reference/decision-point.md` protocol to pause and wait for the user to explicitly choose**. Must not auto-continue and must not write the pause into `build_mode`.
+This is a user decision point. Follow main skill blocking point rule to pause for explicit user choice. Must not auto-continue and must not write the pause into `build_mode`.
 
 When the user chooses to continue:
 
@@ -138,7 +151,7 @@ Plan has been written to the current branch. Before starting execution, **ask th
 - Task count ≤ 2 and no cross-module dependencies → Recommend B
 - From hotfix path → Recommend B
 
-This is a user decision point. **Must follow the `comet/reference/decision-point.md` protocol to pause and wait for the user to explicitly choose isolation method, execution method, and TDD mode**. Must not choose `branch` or `worktree` based on recommendation rules, and must not choose the execution method or TDD mode based on recommendation rules. Recommendation rules are for suggestion only, not a substitute for user confirmation.
+This is a user decision point. Follow main skill blocking point rule to pause for explicit user choice of isolation method, execution method, and TDD mode. Must not choose based on recommendation rules. Recommendation rules are for suggestion only, not a substitute for user confirmation.
 
 After user selection, update `isolation`, execution method, and TDD mode fields:
 
@@ -176,7 +189,7 @@ Without `direct_override: true`, `build_mode=direct` in full workflow is blocked
 
 **Execute isolation**:
 
-- **branch**: Recommend a branch name based on the workflow type and current date, then let the user confirm or input a custom name. This is a user decision point — **must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm or override the branch name**. Must not skip this step and create the branch directly.
+- **branch**: Recommend a branch name based on the workflow type and current date, then let the user confirm or input a custom name. This is a user decision point — follow main skill blocking point rule to pause for explicit user confirmation or override of the branch name. Must not skip this step and create the branch directly.
 
   Branch naming convention:
   - Read the `workflow` field from `.comet.yaml` to determine the prefix
@@ -235,10 +248,10 @@ When the initial spec is found incomplete during implementation, handle by scale
 | Scale | Trigger Conditions | Approach |
 |------|-------------------|----------|
 | Small | Missing acceptance scenarios, edge cases | Directly edit delta spec + design.md, append tasks.md tasks |
-| Medium | Interface changes, new components, data flow changes | **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm**, then must use Skill tool to load the Superpowers `brainstorming` skill to update Design Doc + delta spec |
-| Large | Brand-new capability requirements | **Must use the current platform's available user input/confirmation mechanism to pause and wait for the user to explicitly confirm the split**; after user confirms, create independent change through `/comet-open` |
+| Medium | Interface changes, new components, data flow changes | Follow main skill blocking point rule to pause for explicit user confirmation, then must use Skill tool to load the Superpowers `brainstorming` skill to update Design Doc + delta spec |
+| Large | Brand-new capability requirements | Follow main skill blocking point rule to pause for explicit user confirmation of the split; after user confirms, create independent change through `/comet-open` |
 
-**50% Threshold Determination**: Using initial task count in tasks.md as baseline, if new tasks exceed half of that total, it's considered outside original plan scope, **must follow the `comet/reference/decision-point.md` protocol to pause and wait for the user to decide whether to split into a new change**.
+**50% Threshold Determination**: Using initial task count in tasks.md as baseline, if new tasks exceed half of that total, it's considered outside original plan scope. Follow main skill blocking point rule to pause for user decision on whether to split into a new change.
 
 When creating an independent change, must invoke `/comet-open`, not `/opsx:new` directly. `/comet-open` creates both OpenSpec artifacts and `.comet.yaml`, preventing the new change from leaving the Comet state machine.
 
@@ -293,12 +306,4 @@ State file is automatically updated to `phase: verify`, `verify_result: pending`
 
 ## Automatic Handoff to Next Phase
 
-Follow `comet/reference/auto-transition.md`. Key command:
-
-```bash
-"$COMET_BASH" "$COMET_STATE" next <change-name>
-```
-
-- `NEXT: auto` → invoke the skill pointed to by `SKILL` to enter the next phase
-- `NEXT: manual` → do not invoke the next skill; prompt user to run `/<SKILL>` manually
-- `NEXT: done` → workflow is complete, no further action needed
+Follow main skill "Shared Rules → Auto-Advance to Next Phase".

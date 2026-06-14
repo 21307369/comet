@@ -1,22 +1,19 @@
 <p align="center">
-  <a href="https://github.com/rpamis/comet/blob/master/img/title-log.png">
+  <a href="https://github.com/21307369/comet/blob/master/img/title-log.png">
     <picture>
-      <source srcset="https://github.com/rpamis/comet/blob/master/img/title-log.png">
-      <img src="https://github.com/rpamis/comet/blob/master/img/title-log.png" alt="Comet logo">
+      <source srcset="https://github.com/21307369/comet/blob/master/img/title-log.png">
+      <img src="https://github.com/21307369/comet/blob/master/img/title-log.png" alt="Comet logo">
     </picture>
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/rpamis/comet/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/rpamis/comet/ci.yml?branch=master&style=flat-square&label=CI" /></a>
-  <a href="https://deepwiki.com/rpamis/comet"><img alt="DeepWiki" src="https://img.shields.io/badge/DeepWiki-rpamis%2Fcomet-blue?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/@rpamis/comet"><img alt="npm version" src="https://img.shields.io/npm/v/@rpamis/comet?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/@rpamis/comet"><img alt="npm download count" src="https://img.shields.io/npm/dm/@rpamis/comet?style=flat-square&label=Downloads/mo" /></a>
-  <a href="https://www.npmjs.com/package/@rpamis/comet"><img alt="npm weekly download count" src="https://img.shields.io/npm/dw/@rpamis/comet?style=flat-square&label=Downloads/wk" /></a>
+  <a href="https://github.com/21307369/comet/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/21307369/comet/ci.yml?branch=master&style=flat-square&label=CI" /></a>
+  <a href="https://deepwiki.com/21307369/comet"><img alt="DeepWiki" src="https://img.shields.io/badge/DeepWiki-21307369%2Fcomet-blue?style=flat-square" /></a>
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" /></a>
 </p>
 
-# @rpamis/comet
+# @21307369/comet
 
 ```
  ██████╗ ██████╗ ███╗   ███╗███████╗████████╗
@@ -29,7 +26,6 @@
 
 > English version: [README.md](README.md)
 > [Bilibili video](https://www.bilibili.com/video/BV1y4Gi6CEo1/?spm_id_from=333.1387.homepage.video_card.click&vd_source=d22726fe6b108647dbebf1c5d8817377)
-> [抖音](https://www.douyin.com/search/comet?aid=cd8fcc82-498b-4d59-8860-617deb719412&modal_id=7646429015808936293&type=general)
 
 **OpenSpec + Superpowers 双星开发工作流** — 从创意到归档，一条命令。
 
@@ -102,7 +98,17 @@ Superpowers 时，可能只用 OpenSpec 的 Spec 管理能力，而编码上更�
 - 可运行 bash 的 shell 环境（Windows 用户建议使用 Git Bash 或等价环境）
 
 ```bash
-npm install -g @rpamis/comet
+npm install -g github:21307369/comet
+```
+
+### 开发模式（本地）
+
+```bash
+git clone https://github.com/21307369/comet.git
+cd comet
+pnpm install
+pnpm build
+pnpm link --global
 ```
 
 ## 快速开始
@@ -114,31 +120,32 @@ comet init
 
 `comet init` 会：
 
-1. 提示你选择 AI 平台（自动检测已有配置）
+1. 提示你选择 AI 平台（自动检测已有配置，显示技能安装路径）
 2. 选择安装范围：项目级（当前目录）或全局（用户主目录）
 3. 选择 Comet 技能语言：English 或 中文
 4. 安装 [OpenSpec](https://github.com/Fission-AI/OpenSpec) 技能
-5. 安装 [Superpowers](https://github.com/obra/superpowers) 技能
+5. 安装 [Superpowers 中文版](https://github.com/jnMetaCode/superpowers-zh) 技能
 6. 将 Comet 技能（你选择的语言）部署到所选平台
-7. 在项目级安装时创建 `docs/superpowers/specs/` 和 `docs/superpowers/plans/` 工作目录
+7. 选择 Pi 平台时安装 Pi 扩展（`comet.ts`）
+8. 在项目级安装时创建 `docs/superpowers/specs/` 和 `docs/superpowers/plans/` 工作目录
 
 > [!TIP]
-> 更新版本号
+> 更新版本
 >
-> 执行 `comet update` 或者 `npm install -g @rpamis/comet@latest` 即可更新到最新版本。
+> 执行 `comet update` 或者 `npm install -g github:21307369/comet` 即可更新到最新版本。
 
 ## 对OpenClaw和Hermes、或其他AI平台的支持
 
 对于直接使用通用 `skills` CLI 的平台，可以用下面的方式安装 Comet skill 包：
 
 ```bash
-npx skills add rpamis/comet
+npx skills add 21307369/comet
 ```
 
 ## 运行截图
 
 <p align="center">
-  <img src="https://github.com/rpamis/comet/blob/master/img/runner.png" alt="runner">
+  <img src="https://github.com/21307369/comet/blob/master/img/runner.png" alt="runner">
 </p>
 <p align="center">自动安装 OpenSpec、Superpowers，一键配置开发环境</p>
 <p align="center">多阶段 Skill 入口，自动识别当前 Spec 阶段，核心流程自动触发，关键节点人工审核</p>
@@ -188,13 +195,41 @@ npx skills add rpamis/comet
 <details>
 <summary><code>comet update [path]</code> — 更新 Comet 包和技能</summary>
 
-更新 npm 包，并刷新已检测到的项目级/全局 Comet 技能。
+更新 Comet 包，并刷新已检测到的项目级/全局 Comet 技能。支持三种更新来源：
 
-| 选项                  | 描述                             |
-|---------------------|--------------------------------|
+| 选项                  | 描述                                    |
+|---------------------|-----------------------------------------|
+| `--source <source>` | 更新来源：`npm`（默认）、`github` 或 `local`  |
+| `--repo <url>`      | GitHub 仓库 URL（用于 `--source github`） |
+| `--comet-path <path>` | 本地 Comet fork 路径（用于 `--source local` 或 `--source github`） |
 | `--json`            | 以 JSON 输出 npm 和 skill 更新结果     |
 | `--language <lang>` | 覆盖自动检测到的 skill 语言 (`en`, `zh`) |
 | `--scope <scope>`   | 仅更新 `global` 或 `project` 范围    |
+
+**来源模式：**
+
+- **`npm`**（默认）：运行 `npm install @rpamis/comet@latest` 并从安装的包中刷新技能。
+- **`github`**：将 GitHub 仓库克隆或拉取到 `~/.comet/repo/<name>/`，并从克隆的 assets 目录复制技能。需要 `--repo <url>` 或本地 fork 的 package.json 中有 `repository` 字段。
+- **`local`**：从本地 Comet fork 目录使用技能。需要 `--comet-path <path>` 指向 fork 根目录。
+
+**示例：**
+
+```bash
+# 默认：从 npm 更新
+comet update
+
+# 从本地 fork 更新（不拉取 git）
+comet update --source local --comet-path /Volumes/code/comet
+
+# 从 GitHub 更新（克隆或拉取）
+comet update --source github --repo https://github.com/你的/comet.git
+
+# 从 GitHub 更新（从 package.json 自动检测仓库）
+comet update --source github --comet-path /Volumes/code/comet
+
+# 与其他选项组合
+comet update --source local --comet-path /Volumes/code/comet --scope project --language zh --json
+```
 
 </details>
 
@@ -286,7 +321,7 @@ comet uninstall --scope project  # 仅移除项目级安装
 | `comet-handoff.sh`       | 设计交接 — 从 OpenSpec 制品生成带 SHA256 追踪的确定性上下文包                                       |
 | `comet-archive.sh`       | 一键归档 — 验证状态、同步 specs、移至归档、更新状态                                                  |
 | `comet-yaml-validate.sh` | 模式校验器 — 校验 `.comet.yaml` 结构和字段值                                                 |
-| `comet-state.sh`         | 统一状态管理 — init/set/get/check/scale，agent 的专属 YAML 接口                             |
+| `comet-state.sh`         | 统一状态管理 — init/set/get/check/conflict-check/scale，agent 的专属 YAML 接口 |
 | `comet-hook-guard.sh`    | 阶段写入守护 — PreToolUse hook，在 open/design/archive 阶段拦截文件写入                         |
 
 </details>
@@ -318,15 +353,16 @@ Spec 生命周期管理：propose、explore、sync、verify、archive 等。
 
 | 阶段                 | 命令               | 归属          | 产出物                            |
 |--------------------|------------------|-------------|--------------------------------|
-| 1. Open            | `/comet-open`    | OpenSpec    | proposal.md、design.md、tasks.md |
+| 1. Open            | `/comet-open`    | OpenSpec    | proposal.md、design.md、tasks.md（含冲突检查） |
 | 2. Deep Design     | `/comet-design`  | Superpowers | Design Doc、delta spec          |
 | 3. Plan & Build    | `/comet-build`   | Superpowers | 实现计划、代码提交                      |
 | 4. Verify & Finish | `/comet-verify`  | Both        | 验证报告、分支处理                      |
-| 5. Archive         | `/comet-archive` | OpenSpec    | delta→main spec 同步、归档          |
+| 5. Archive         | `/comet-archive` | OpenSpec    | delta→main spec 同步、INDEX.md 更新、归档 |
 
 ### 核心原则
 
 - **头脑风暴不可跳过** — 每个变更必须经过深度设计（hotfix/tweak 除外）
+- **产物收敛** — 所有产物基于项目实际代码而非模板生成；实现逻辑用伪代码/描述代替，仅接口签名和类型定义写代码
 - **Delta spec 是活文档** — 在阶段 3 中可自由编辑，归档时同步
 - **保持 tasks.md 同步** — 每完成一个任务就勾选
 - **频繁提交** — 每个任务一个 commit，message 体现设计意图
@@ -425,6 +461,13 @@ Comet 通过自动化状态转换确保 agent 执行可靠性：
     - 将变更移至归档目录并更新 `archived: true`
     - 支持 `--dry-run` 预览
 
+7. **设计目录（INDEX.md）** — 防止重复设计文档
+    - `comet-open` 在创建制品前运行 `comet-state conflict-check`
+    - 优先检查 `docs/superpowers/INDEX.md`（权威目录），然后文件系统扫描
+    - 发现冲突时：暂停并展示用户选项（继续已有 / 扩展 / 确认无关）
+    - `comet-archive` 更新 INDEX.md —— 将变更从「进行中」移至「已完成」
+    - 追踪关键词、设计文档路径和计划文档路径用于未来冲突检测
+
 7. **防漂移阶段守护** — 长上下文会话中的阶段意识保障
     - Rule 层：`comet-phase-guard.md` 每轮注入阶段感知、Skill 调用规范和上下文恢复指令（所有平台通用）
     - Hook 层：`comet-hook-guard.sh` 在 open/design/archive 阶段硬拦截文件写入（Claude Code 等支持 hook 的平台）
@@ -451,6 +494,9 @@ your-project/
 │   ├── comet-*/SKILL.md
 │   ├── openspec-*/SKILL.md
 │   └── brainstorming/SKILL.md
+├── .pi/extensions/              # Pi 平台专用（其他平台在 .xxx/skills/）
+│   ├── comet.ts                 # Pi 扩展（I18N、session hooks、工具扩展）
+│   └── comet-i18n.json          # Pi 扩展国际化配置
 ├── openspec/                    # OpenSpec — WHAT
 │   ├── config.yaml
 │   └── changes/
@@ -462,6 +508,7 @@ your-project/
 │           ├── specs/<capability>/spec.md
 │           └── tasks.md
 └── docs/superpowers/            # Superpowers — HOW
+    ├── INDEX.md                 # 设计目录 — 追踪所有设计文档及关键词
     ├── specs/                   # 设计文档
     └── plans/                   # 实现计划
 ```
@@ -514,41 +561,18 @@ Benchmark 核心结论：
 
 ## 路线图
 
-在 [Comet Roadmap](https://github.com/orgs/rpamis/projects/1) 查看开发进展与即将推出的功能。
+在 [Comet Roadmap](https://github.com/orgs/21307369/projects/1) 查看开发进展与即将推出的功能。
 
 ## Star历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=rpamis/comet&type=Date)](https://star-history.com/#rpamis/comet&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=21307369/comet&type=Date)](https://star-history.com/#21307369/comet&Date)
 
 ## Contributors
 
-<a href="https://github.com/rpamis/comet/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=rpamis/comet&max=999&columns=12&anon=1" />
+<a href="https://github.com/21307369/comet/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=21307369/comet&max=999&columns=12&anon=1" />
 </a>
 
 ## License
 
 [MIT](LICENSE)
-
-## 社区交流
-
-<table align="center">
-  <tr>
-    <td align="center" width="180">
-      <img src="https://github.com/rpamis/comet/blob/master/img/douyin.png" width="120" height="120"><br>
-      <b>抖音群（推荐）</b>
-    </td>
-    <td align="center" width="180">
-      <img src="https://github.com/rpamis/comet/blob/master/img/wechat.jpg" width="120" height="120"><br>
-      <b>微信群</b>
-    </td>
-    <td align="center" width="180">
-      <img src="https://github.com/rpamis/comet/blob/master/img/qq.jpg" width="120" height="120"><br>
-      <b>QQ群</b>
-    </td>
-  </tr>
-</table>
-
-## 友情链接
-
-[LINUX DO - 新的理想型社区](https://linux.do/)

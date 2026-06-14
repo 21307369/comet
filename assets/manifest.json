@@ -23,7 +23,8 @@
     "comet-verify/SKILL.md",
     "comet-archive/SKILL.md",
     "comet-hotfix/SKILL.md",
-    "comet-tweak/SKILL.md"
+    "comet-tweak/SKILL.md",
+    "comet-review-plan/SKILL.md"
   ],
   "rules": [
     "comet/rules/comet-phase-guard.md"

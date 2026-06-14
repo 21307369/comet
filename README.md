@@ -1,22 +1,19 @@
 <p align="center">
-  <a href="https://github.com/rpamis/comet/blob/master/img/title-log.png">
+  <a href="https://github.com/21307369/comet/blob/master/img/title-log.png">
     <picture>
-      <source srcset="https://github.com/rpamis/comet/blob/master/img/title-log.png">
-      <img src="https://github.com/rpamis/comet/blob/master/img/title-log.png" alt="Comet logo">
+      <source srcset="https://github.com/21307369/comet/blob/master/img/title-log.png">
+      <img src="https://github.com/21307369/comet/blob/master/img/title-log.png" alt="Comet logo">
     </picture>
   </a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/rpamis/comet/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/rpamis/comet/ci.yml?branch=master&style=flat-square&label=CI" /></a>
-  <a href="https://deepwiki.com/rpamis/comet"><img alt="DeepWiki" src="https://img.shields.io/badge/DeepWiki-rpamis%2Fcomet-blue?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/@rpamis/comet"><img alt="npm version" src="https://img.shields.io/npm/v/@rpamis/comet?style=flat-square" /></a>
-  <a href="https://www.npmjs.com/package/@rpamis/comet"><img alt="npm download count" src="https://img.shields.io/npm/dm/@rpamis/comet?style=flat-square&label=Downloads/mo" /></a>
-  <a href="https://www.npmjs.com/package/@rpamis/comet"><img alt="npm weekly download count" src="https://img.shields.io/npm/dw/@rpamis/comet?style=flat-square&label=Downloads/wk" /></a>
+  <a href="https://github.com/21307369/comet/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/21307369/comet/ci.yml?branch=master&style=flat-square&label=CI" /></a>
+  <a href="https://deepwiki.com/21307369/comet"><img alt="DeepWiki" src="https://img.shields.io/badge/DeepWiki-21307369%2Fcomet-blue?style=flat-square" /></a>
   <a href="./LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square" /></a>
 </p>
 
-# @rpamis/comet
+# @21307369/comet
 
 ```
  ██████╗ ██████╗ ███╗   ███╗███████╗████████╗
@@ -29,7 +26,6 @@
 
 > 中文版：[README-zh.md](README-zh.md)
 > [Bilibili video](https://www.bilibili.com/video/BV1y4Gi6CEo1/?spm_id_from=333.1387.homepage.video_card.click&vd_source=d22726fe6b108647dbebf1c5d8817377)
-> [DouYin](https://www.douyin.com/search/comet?aid=cd8fcc82-498b-4d59-8860-617deb719412&modal_id=7646429015808936293&type=general)
 
 **OpenSpec + Superpowers dual-star development workflow** — one command from idea to archive.
 
@@ -119,7 +115,17 @@ Requirements:
 - Bash-compatible shell for workflow scripts (Windows users should use Git Bash or an equivalent bash environment)
 
 ```bash
-npm install -g @rpamis/comet
+npm install -g github:21307369/comet
+```
+
+### Development (Local)
+
+```bash
+git clone https://github.com/21307369/comet.git
+cd comet
+pnpm install
+pnpm build
+pnpm link --global
 ```
 
 ## Quick Start
@@ -131,31 +137,32 @@ comet init
 
 `comet init` will:
 
-1. Prompt you to select AI platforms (auto-detects existing configs)
+1. Prompt you to select AI platforms (auto-detects existing configs, shows skills install path)
 2. Choose install scope: project-level (current directory) or global (home directory)
 3. Select language for Comet skills: English or 中文
 4. Install [OpenSpec](https://github.com/Fission-AI/OpenSpec) skills
-5. Install [Superpowers](https://github.com/obra/superpowers) skills
+5. Install [Superpowers 中文版](https://github.com/jnMetaCode/superpowers-zh) skills
 6. Deploy Comet skills (in your chosen language) to selected platforms
-7. Create `docs/superpowers/specs/` and `docs/superpowers/plans/` working directories for project-scope installs
+7. Install Pi extension (`comet.ts`) when Pi platform is selected
+8. Create `docs/superpowers/specs/` and `docs/superpowers/plans/` working directories for project-scope installs
 
 > [!TIP]
-> update version
+> Update versions
 >
-> `comet update` or `npm install -g @rpamis/comet@latest` to get the latest features and fixes.
+> Run `comet update` or `npm install -g github:21307369/comet` to get the latest features and fixes.
 
 ## Support for OpenClaw and Hermes, and other AI platforms
 
 For platforms that use the generic `skills` CLI directly, you can install the Comet skill package with:
 
 ```bash
-npx skills add rpamis/comet
+npx skills add 21307369/comet
 ```
 
 ## Screenshots
 
 <p align="center">
-  <img src="https://github.com/rpamis/comet/blob/master/img/runner.png" alt="runner">
+  <img src="https://github.com/21307369/comet/blob/master/img/runner.png" alt="runner">
 </p>
 
 <p align="center">Auto-install OpenSpec & Superpowers, one-click dev environment setup</p>
@@ -207,13 +214,41 @@ Checks project/global installation health, working directories, installed skills
 <details>
 <summary><code>comet update [path]</code> — Update Comet package and skills</summary>
 
-Updates the npm package and refreshes installed Comet skills in detected project/global targets.
+Updates the Comet package and refreshes installed skills in detected project/global targets. Supports three update sources:
 
-| Option              | Description                                   |
-|---------------------|-----------------------------------------------|
-| `--json`            | Output npm and skill update results as JSON   |
-| `--language <lang>` | Override detected skill language (`en`, `zh`) |
-| `--scope <scope>`   | Update only `global` or `project` scope       |
+| Option              | Description                                    |
+|---------------------|------------------------------------------------|
+| `--source <source>` | Update source: `npm` (default), `github`, or `local` |
+| `--repo <url>`      | GitHub repository URL (for `--source github`)  |
+| `--comet-path <path>` | Path to local Comet fork (for `--source local` or `--source github`) |
+| `--json`            | Output npm and skill update results as JSON    |
+| `--language <lang>` | Override detected skill language (`en`, `zh`)  |
+| `--scope <scope>`   | Update only `global` or `project` scope        |
+
+**Source modes:**
+
+- **`npm`** (default): Runs `npm install @rpamis/comet@latest` and refreshes skills from the installed package.
+- **`github`**: Clones or pulls the GitHub repository to `~/.comet/repo/<name>/` and copies skills from the cloned assets directory. Requires `--repo <url>` or a `repository` field in the package.json of your local fork.
+- **`local`**: Uses skills from a local Comet fork directory. Requires `--comet-path <path>` pointing to the root of your fork.
+
+**Examples:**
+
+```bash
+# Default: update from npm
+comet update
+
+# Update from a local fork (no git pull)
+comet update --source local --comet-path /Volumes/code/comet
+
+# Update from GitHub (clone or pull)
+comet update --source github --repo https://github.com/your/comet.git
+
+# Update from GitHub (auto-detect repo from package.json)
+comet update --source github --comet-path /Volumes/code/comet
+
+# Combine with other options
+comet update --source local --comet-path /Volumes/code/comet --scope project --language zh --json
+```
 
 </details>
 
@@ -306,7 +341,7 @@ After `comet init`, three groups of skills are installed to the selected platfor
 | `comet-archive.sh`       | One-command archive — validates state, syncs specs, moves to archive, updates status                                              |
 | `comet-yaml-validate.sh` | Schema validator — validates `.comet.yaml` structure and field values                                                             |
 | `comet-hook-guard.sh`    | Phase write guard — PreToolUse hook, blocks file writes during open/design/archive phases                                         |
-| `comet-state.sh`         | Unified state management — init/set/get/check/scale, agents' exclusive YAML interface                                             |
+| `comet-state.sh`         | Unified state management — init/set/get/check/conflict-check/scale, agents' exclusive YAML interface |
 
 </details>
 
@@ -337,15 +372,16 @@ Development methodology: brainstorming, TDD, subagent-driven development, code r
 
 | Phase              | Command          | Owner       | Artifacts                            |
 |--------------------|------------------|-------------|--------------------------------------|
-| 1. Open            | `/comet-open`    | OpenSpec    | proposal.md, design.md, tasks.md     |
+| 1. Open            | `/comet-open`    | OpenSpec    | proposal.md, design.md, tasks.md (with conflict check) |
 | 2. Deep Design     | `/comet-design`  | Superpowers | Design Doc, delta spec               |
 | 3. Plan & Build    | `/comet-build`   | Superpowers | Implementation plan, code commits    |
 | 4. Verify & Finish | `/comet-verify`  | Both        | Verification report, branch handling |
-| 5. Archive         | `/comet-archive` | OpenSpec    | delta→main spec sync, archive        |
+| 5. Archive         | `/comet-archive` | OpenSpec    | delta→main spec sync, INDEX.md update, archive |
 
 ### Core Principles
 
 - **Brainstorming is non-skippable** — every change must go through deep design (except hotfix/tweak)
+- **Product convergence** — artifacts grounded in real project code, not templates; implementation logic uses pseudocode/descriptions, only interface signatures and type definitions written as code
 - **Delta specs are living documents** — freely editable during Phase 3, synced at archive
 - **Keep tasks.md in sync** — check off each task as completed
 - **Commit frequently** — one commit per task, message reflects design intent
@@ -448,6 +484,13 @@ Comet ensures agent execution reliability through automated state transitions:
     - Moves change to archive directory and updates `archived: true`
     - Supports `--dry-run` for preview
 
+7. **Design Registry (INDEX.md)** — Prevents duplicate design documents
+    - `comet-open` runs `comet-state conflict-check` before creating artifacts
+    - Checks `docs/superpowers/INDEX.md` (authoritative registry) first, then file-system scan
+    - On conflict: pauses and presents user options (continue existing / extend / confirm unrelated)
+    - `comet-archive` updates INDEX.md — moves change from "In Progress" to "Completed"
+    - Tracks keywords, design doc paths, and plan doc paths for future conflict detection
+
 </details>
 
 ## Project Structure
@@ -480,6 +523,7 @@ your-project/
 │           ├── specs/<capability>/spec.md
 │           └── tasks.md
 └── docs/superpowers/            # Superpowers — HOW
+    ├── INDEX.md                 # Design Registry — tracks all design docs with keywords
     ├── specs/                   # Design documents
     └── plans/                   # Implementation plans
 ```
@@ -535,41 +579,18 @@ See [CHANGELOG.md](CHANGELOG.md) for version history and updates.
 
 ## Roadmap
 
-Track our development progress and upcoming features on the [Comet Roadmap](https://github.com/orgs/rpamis/projects/1).
+Track our development progress and upcoming features on the [Comet Roadmap](https://github.com/orgs/21307369/projects/1).
 
 ## Star History
 
-[![Star History Chart](https://api.star-history.com/svg?repos=rpamis/comet&type=Date)](https://star-history.com/#rpamis/comet&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=21307369/comet&type=Date)](https://star-history.com/#21307369/comet&Date)
 
 ## Contributors
 
-<a href="https://github.com/rpamis/comet/graphs/contributors">
-  <img src="https://contrib.rocks/image?repo=rpamis/comet&columns=12&anon=1" />
+<a href="https://github.com/21307369/comet/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=21307369/comet&columns=12&anon=1" />
 </a>
 
 ## License
 
 [MIT](LICENSE)
-
-## Community
-
-<table align="center">
-  <tr>
-    <td align="center" width="180">
-      <img src="https://github.com/rpamis/comet/blob/master/img/douyin.png" width="120" height="120"><br>
-      <b>DouYin (Recommended)</b>
-    </td>
-    <td align="center" width="180">
-      <img src="https://github.com/rpamis/comet/blob/master/img/wechat.jpg" width="120" height="120"><br>
-      <b>WeChat</b>
-    </td>
-    <td align="center" width="180">
-      <img src="https://github.com/rpamis/comet/blob/master/img/qq.jpg" width="120" height="120"><br>
-      <b>QQ</b>
-    </td>
-  </tr>
-</table>
-
-## Reference
-
-[LINUX DO - 新的理想型社区](https://linux.do/)

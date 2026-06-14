@@ -220,13 +220,7 @@ export const PLATFORMS: Platform[] = [
   { id: 'crush', name: 'Crush', skillsDir: '.crush', openspecToolId: 'crush' },
   { id: 'factory', name: 'Factory Droid', skillsDir: '.factory', openspecToolId: 'factory' },
   { id: 'iflow', name: 'iFlow', skillsDir: '.iflow', openspecToolId: 'iflow' },
-  {
-    id: 'pi',
-    name: 'Pi',
-    skillsDir: '.pi',
-    globalSkillsDir: '.pi/agent',
-    openspecToolId: 'pi',
-  },
+  { id: 'pi', name: 'Pi', skillsDir: '.pi', globalSkillsDir: '.agents', openspecToolId: 'pi' },
   {
     id: 'qoder',
     name: 'Qoder',

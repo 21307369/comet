@@ -159,6 +159,7 @@ Agents should not skip these decision points; other unambiguous phase transition
 | `/comet-archive` | 5. Archive | OpenSpec | delta→main spec sync, design doc markup, archive |
 | `/comet-hotfix` | Preset path | Both | Quick fix (skip brainstorming) |
 | `/comet-tweak` | Preset path | Both | Small change (skip brainstorming and full plan) |
+| `/comet-review-plan` | Build-internal | Both | Independent spec and plan review (break same-source bias) |
 
 ```
 /comet
@@ -174,6 +175,33 @@ Agents should not skip these decision points; other unambiguous phase transition
   open ──→ lightweight build ──→ light verify ──→ archive
     ↑ If upgrade triggered → block for confirmation → supplement Design Doc → return to full workflow
 ```
+
+---
+
+## Shared Rules (Referenced by Sub-Skills)
+
+The following rules are the authoritative definitions for all sub-skills. Where sub-skills state "follow main skill shared rules", they reference this section.
+
+### Blocking Point Rule
+
+Any node marked as a "Blocking Point" in a sub-skill must follow this behavior:
+
+1. **Pause**: Use the current platform's available user input/confirmation mechanism to pause and wait for the user's explicit choice
+2. **Do not proceed**: Do not execute blocked subsequent operations (e.g., phase guards, auto-transitions, artifact creation) before user confirms
+3. **Fallback when no tool**: If the current platform has no structured question tool, present clear options in the conversation and stop the workflow, waiting for the user's reply before continuing
+4. **Do not infer consent**: User has not explicitly chosen ≠ agreement; do not substitute with recommendations, defaults, or historical preferences
+
+### Auto-Advance to Next Phase
+
+After a sub-skill's exit conditions are met, follow this sequence:
+
+1. **Phase guard advances**: Run `"$COMET_BASH" "$COMET_GUARD" <change-name> <phase> --apply` to advance the `phase` field in `.comet.yaml` — this step **always happens**, regardless of `auto_transition`
+2. **Resolve next step**: Run `"$COMET_BASH" "$COMET_STATE" next <change-name>`, then act on the output:
+   - `NEXT: auto` → Invoke the skill indicated by `SKILL` to enter the next phase
+   - `NEXT: manual` → Do not invoke the next skill; prompt the user to run `/<SKILL>` manually per `HINT`
+   - `NEXT: done` → Workflow is complete; no further action needed
+
+> `auto_transition` only controls whether to auto-invoke the next skill; it does not affect phase advancement.
 
 ---
 

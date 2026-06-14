@@ -159,6 +159,7 @@ agent 不应跳过这些决策点；其他明确无歧义的阶段衔接必须�
 | `/comet-archive` | 5. 归档 | OpenSpec | delta→main spec 同步、design doc 标注、归档 |
 | `/comet-hotfix` | 预设路径 | Both | 快速修复（跳过 brainstorming） |
 | `/comet-tweak` | 预设路径 | Both | 小改动（跳过 brainstorming 和完整 plan） |
+| `/comet-review-plan` | build 内嵌 | Both | 独立审查 spec 和 plan（打破同源性偏差） |
 
 ```
 /comet
@@ -174,6 +175,33 @@ agent 不应跳过这些决策点；其他明确无歧义的阶段衔接必须�
   open ──→ lightweight build ──→ light verify ──→ archive
     ↑ 如触发升级条件 → 阻塞确认升级 → 补充 Design Doc → 回到完整流程
 ```
+
+---
+
+## 共享规则（子 skill 引用）
+
+以下规则为所有子 skill 的权威定义。子 skill 中标注「按主 skill 共享规则处理」的位置，均引用本节定义。
+
+### 阻塞点规则
+
+凡子 skill 标注为「阻塞点」的节点，必须执行以下行为：
+
+1. **暂停**：使用当前平台可用的用户输入/确认机制暂停并等待用户明确选择
+2. **不得先行**：不得在用户确认前执行被阻塞的后续操作（如阶段守卫、自动流转、产物创建）
+3. **无工具回退**：若当前平台没有结构化提问工具，则在对话中提出明确选项并停止流程，等待用户回复后才能继续
+4. **不得推断同意**：用户未明确选择 ≠ 同意，不得用推荐规则、默认值或历史偏好代替
+
+### 自动衔接下一阶段
+
+子 skill 退出条件满足后，按以下流程衔接：
+
+1. **阶段守卫推进**：运行 `"$COMET_BASH" "$COMET_GUARD" <change-name> <phase> --apply` 推进 `.comet.yaml` 的 `phase` 字段——此步**始终发生**，与 `auto_transition` 无关
+2. **解析下一步**：运行 `"$COMET_BASH" "$COMET_STATE" next <change-name>`，按输出决定：
+   - `NEXT: auto` → 调用 `SKILL` 指向的 skill 进入下一阶段
+   - `NEXT: manual` → 不调用下一 skill，按 `HINT` 提示用户手动运行 `/<SKILL>`
+   - `NEXT: done` → 流程已完成，无需继续
+
+> `auto_transition` 只控制是否自动调用下一 skill，不影响 phase 推进。
 
 ---
 
