@@ -523,7 +523,7 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
     log('\n  CodeGraph: skipped');
   }
 
-  // Clean up redundant Pi directories
+  // Clean up redundant Pi skill directories (keep empty dirs to avoid Pi warnings)
   if (selectedPlatformIds.includes('pi') && scope === 'global') {
     const redundantDirs = [
       path.join(os.homedir(), '.pi', 'skills'),
@@ -533,7 +533,11 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
     for (const dir of redundantDirs) {
       if (await fileExists(dir)) {
         try {
-          await rm(dir, { recursive: true, force: true });
+          // Remove contents but keep the directory
+          const entries = await import('fs/promises').then((fs) => fs.readdir(dir));
+          for (const entry of entries) {
+            await rm(path.join(dir, entry), { recursive: true, force: true });
+          }
           log(`  Cleaned: ${dir.replace(os.homedir(), '~')}`);
         } catch (err) {
           log(`  Failed to clean ${dir}: ${(err as Error).message}`);
