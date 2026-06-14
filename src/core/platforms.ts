@@ -224,7 +224,7 @@ export const PLATFORMS: Platform[] = [
     id: 'pi',
     name: 'Pi',
     skillsDir: '.pi',
-    globalSkillsDir: '.pi/agent',
+    globalSkillsDir: '.agents',
     openspecToolId: 'pi',
   },
   {
