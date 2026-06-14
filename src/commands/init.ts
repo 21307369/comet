@@ -21,6 +21,7 @@ type InitOptions = {
   overwrite?: boolean;
   json?: boolean;
   scope?: InstallScope;
+  language?: string;
 };
 
 type InstallStatus = 'installed' | 'skipped' | 'failed';
@@ -74,6 +75,9 @@ async function selectScope(options: InitOptions, language: LanguageConfig): Prom
 }
 
 async function selectLanguage(options: InitOptions): Promise<LanguageConfig> {
+  if (options.language) {
+    return LANGUAGES.find((l) => l.id === options.language) ?? LANGUAGES[0];
+  }
   if (options.yes) return LANGUAGES[0];
 
   const langId = await select({

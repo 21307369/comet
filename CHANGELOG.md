@@ -2,7 +2,17 @@
 
 All notable changes to @rpamis/comet will be documented in this file.
 
-## What's Changed [0.3.8] - 2026-06-10
+## What's Changed [0.3.9] - 2026-06-14
+
+### Changed
+
+- **Superpowers source switched to superpowers-zh**: `comet init` now installs skills from `21307369/superpowers-zh` instead of `obra/superpowers` via the `npx skills add` command. Only the source argument changed (`SUPERPOWERS_SOURCE = '21307369/superpowers-zh'`); command format, batch structure, `SKILLS_AGENT_MAP` name, and Lingma staging logic all preserved for upstream sync compatibility. All 29 platforms now have valid agent names (lingma gained native `--agent lingma` support; previously required claude-code staging only).
+
+### Tests
+
+- **Superpowers tests updated**: Tests verify `SKILLS_AGENT_MAP` agent names against `npx skills add 21307369/superpowers-zh` valid agents list, confirm all 29 platforms have non-null agent names, and validate install command format, `-g` flag for global scope, and Lingma staging command.
+
+## What's Changed [0.3.8] - 2026-06-13
 
 ### Added
 

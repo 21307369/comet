@@ -71,14 +71,17 @@ When pausing, present the clarification summary: goals, non-goals, scope boundar
 
 Must not create proposal.md, design.md, or tasks.md before the user confirms requirements clarification is complete, and must not use the Skill tool to load the `openspec-propose` skill to generate all artifacts in one pass.
 
+
 ### 1c. Pre-flight Document Conflict Check (Blocking Point)
 
 Before creating any change artifacts, must run the programmatic conflict check to scan for related existing documents. The check first consults the **Design Registry** (`docs/superpowers/INDEX.md`) — the authoritative index of all design documents — then falls back to file-system scanning. This prevents parallel duplicate design documents across `openspec/changes/` and `docs/superpowers/`.
 
-**Execution:**
-
 ```bash
 COMET_ENV="${COMET_ENV:-$(find . "$HOME"/.*/skills "$HOME/.config" "$HOME/.gemini" -path '*/comet/scripts/comet-env.sh' -type f -print -quit 2>/dev/null)}"
+if [ -z "$COMET_ENV" ]; then
+  echo "ERROR: comet-env.sh not found. Ensure the comet skill is installed." >&2
+  return 1
+fi
 . "$COMET_ENV"
 
 # Extract keywords from the clarification summary (change name + topic nouns)

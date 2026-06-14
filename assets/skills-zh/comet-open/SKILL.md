@@ -71,38 +71,41 @@ description: "Comet 阶段 1：开启。用 /comet-open 调用。通过 OpenSpec
 
 不得在用户确认需求澄清完成前创建 proposal.md、design.md 或 tasks.md，也不得使用 Skill 工具加载 `openspec-propose` 技能一次性生成全部 artifacts。
 
-### 1c. 文档冲突预检（阻塞点）
 
-创建任何 change artifacts 之前，必须运行程序化冲突检查，扫描已存在的相关文档。检查优先查阅 **设计目录**（`docs/superpowers/INDEX.md`）——所有设计文档的权威索引——然后回退到文件系统扫描。防止 `openspec/changes/` 和 `docs/superpowers/` 之间产生平行重复设计文档。
+### 1c. 预检文档冲突（阻塞点）
 
-**执行：**
+创建任何 change artifacts 前，必须运行程序化冲突检查以扫描相关现有文档。检查首先查阅**设计注册表**（`docs/superpowers/INDEX.md`）——所有设计文档的权威索引——然后回退到文件系统扫描。这防止跨 `openspec/changes/` 和 `docs/superpowers/` 的并行重复设计文档。
 
 ```bash
 COMET_ENV="${COMET_ENV:-$(find . "$HOME"/.*/skills "$HOME/.config" "$HOME/.gemini" -path '*/comet/scripts/comet-env.sh' -type f -print -quit 2>/dev/null)}"
+if [ -z "$COMET_ENV" ]; then
+  echo "ERROR: comet-env.sh not found. Ensure the comet skill is installed." >&2
+  return 1
+fi
 . "$COMET_ENV"
 
 # 从澄清摘要中提取关键词（change 名称 + 主题名词）
-"$COMET_BASH" "$COMET_STATE" conflict-check <proposed-name> <关键词1> <关键词2> ...
+"$COMET_BASH" "$COMET_STATE" conflict-check <proposed-name> <keyword1> <keyword2> ...
 ```
 
-**关键词提取规则**：从澄清摘要中提取 3–5 个关键词——建议的 change 名称加核心主题名词（模块名、功能名、子系统名）。不得包含「add」「fix」「update」「improve」等泛化词。
+**关键词提取规则**：从澄清摘要中派生 3-5 个关键词——提议的 change 名称加上核心主题名词（模块名称、功能名称、子系统名称）。不要包含通用词如"add"、"fix"、"update"、"improve"。
 
-**检查优先级**：设计目录（`docs/superpowers/INDEX.md`）→ 文件系统扫描（`docs/superpowers/specs/`、`docs/superpowers/plans/`、`openspec/changes/` 非归档）。
+**检查优先级**：设计注册表（`docs/superpowers/INDEX.md`）→ 文件系统扫描（`docs/superpowers/specs/`、`docs/superpowers/plans/`、`openspec/changes/` 非归档）。
 
-**当冲突检查返回 1（发现冲突）时：**
+**当冲突检查返回 1（发现冲突）：**
 
-按主 skill 阻塞点规则暂停展示冲突报告，等待用户回复。用户选择必须包含：
-- 「继续已有 change」— 放弃新建，路由到已有活跃 change
-- 「扩展已有设计文档」— 放弃新建，打开已有设计文档进行编辑
-- 「确认无关，新建」— 用户明确确认范围无关，用明显不同的名称继续 Step 2
+按主技能阻塞点规则暂停并展示冲突报告，等待用户回复。用户选择必须包括：
+- 「继续现有 change」— 中止此新 change，路由到现有 active change
+- 「扩展现有设计文档」— 中止此新 change，打开现有设计文档进行编辑
+- 「确认无关，创建新的」— 用户明确确认范围无关，使用明显不同的名称继续 Step 2
 
-不得在用户完成冲突检查选择前创建 proposal.md、design.md 或 tasks.md。
+在用户完成冲突检查选择前，不得创建 proposal.md、design.md 或 tasks.md。
 
-**当冲突检查返回 0（无冲突）时：**
+**当冲突检查返回 0（无冲突）：**
 
 正常继续 Step 2。
 
-**创建 change 后**：INDEX.md 由阶段守卫自动同步。当 `guard --apply` 推进 open 阶段时，脚本会自动调用 `index-add` 将新 change 添加到「进行中」表格。无需手动编辑 INDEX.md。
+**创建 change 后**：INDEX.md 由阶段守卫自动同步。当 `guard --apply` 推进 open 阶段时，脚本自动调用 `index-add` 将新 change 添加到「进行中」表。无需手动编辑 INDEX.md。
 
 ### 2. 创建 Change 结构 + 初始化状态
 

@@ -15,23 +15,24 @@ const SUPERPOWERS_ZH_TOOL_MAP: Record<string, string | null> = {
   codex: 'codex',
   opencode: 'opencode',
   windsurf: 'windsurf',
-  cline: null,
-  roocode: null,
-  continue: null,
-  'github-copilot': 'vscode',
-  gemini: 'gemini',
-  'amazon-q': null,
-  qwen: 'qwen',
-  kilocode: null,
-  auggie: null,
-  kiro: 'kiro',
-  lingma: null,
-  junie: null,
-  codebuddy: null,
-  costrict: null,
-  crush: null,
-  factory: null,
-  iflow: null,
+  cline: 'cline',
+  roocode: 'roo',
+  continue: 'continue',
+  'github-copilot': 'github-copilot',
+  gemini: 'gemini-cli',
+  'amazon-q': 'universal',
+  qwen: 'qwen-code',
+  kilocode: 'kilo',
+  auggie: 'augment',
+  kiro: 'kiro-cli',
+  kimicode: 'kimi-code-cli',
+  lingma: 'lingma',
+  junie: 'junie',
+  codebuddy: 'codebuddy',
+  costrict: 'universal',
+  crush: 'crush',
+  factory: 'droid',
+  iflow: 'iflow-cli',
   pi: 'pi',
   qoder: 'qoder',
   antigravity: 'antigravity',
@@ -42,6 +43,46 @@ const SUPERPOWERS_ZH_TOOL_MAP: Record<string, string | null> = {
 
 const VALID_PLATFORM_IDS = new Set(Object.keys(SUPERPOWERS_ZH_TOOL_MAP));
 const SUPERPOWERS_INSTALL_TIMEOUT_MS = 300_000;
+const SUPERPOWERS_SOURCE = '21307369/superpowers-zh';
+const LINGMA_PLATFORM_ID = 'lingma';
+const LINGMA_STAGE_AGENT = 'claude-code';
+
+function buildSuperpowersInstallCommand(
+  _projectPath: string,
+  scope: InstallScope,
+  platformIds: string[],
+): { command: string; args: string[] } {
+  const unknownIds = platformIds.filter((id) => !VALID_PLATFORM_IDS.has(id));
+  if (unknownIds.length > 0) {
+    throw new Error(`Unknown platform IDs: ${unknownIds.join(', ')}`);
+  }
+
+  const agentNames = [
+    ...new Set(
+      platformIds.map((id) => SKILLS_AGENT_MAP[id]).filter((name): name is string => Boolean(name)),
+    ),
+  ];
+
+  if (agentNames.length === 0) {
+    throw new Error(`No skills CLI agent names resolved for platforms: ${platformIds.join(', ')}`);
+  }
+
+  const args = ['skills', 'add', SUPERPOWERS_SOURCE, '-y'];
+  if (scope === 'global') {
+    args.push('-g');
+  }
+  for (const name of agentNames) {
+    args.push('--agent', name);
+  }
+  return { command: getNpxExecutable(), args };
+}
+
+function buildLingmaSuperpowersStageCommand(): { command: string; args: string[] } {
+  return {
+    command: getNpxExecutable(),
+    args: ['skills', 'add', SUPERPOWERS_SOURCE, '-y', '--agent', LINGMA_STAGE_AGENT],
+  };
+}
 
 function getNpxExecutable(platform: NodeJS.Platform = process.platform): string {
   return platform === 'win32' ? 'npx.cmd' : 'npx';
@@ -89,8 +130,11 @@ async function installSuperpowersForPlatforms(
     throw new Error(`Unknown platform IDs: ${unknownIds.join(', ')}`);
   }
 
-  // Filter to platforms that superpowers-zh supports
-  const supportedPlatformIds = platformIds.filter((id) => SUPERPOWERS_ZH_TOOL_MAP[id] !== null);
+  const skillsCliPlatformIds = platformIds.filter(
+    (id) => id !== LINGMA_PLATFORM_ID && SKILLS_AGENT_MAP[id],
+  );
+  const shouldInstallLingma = platformIds.includes(LINGMA_PLATFORM_ID);
+  let failed = false;
 
   if (supportedPlatformIds.length === 0) {
     return 'skipped';

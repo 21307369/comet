@@ -142,20 +142,6 @@ async function createFakeOpenSpecArchive(tmpDir: string, archiveDateScript = 'da
 
 const describeShell = bashCommand ? describe : describe.skip;
 
-describe('comet shell script contracts', () => {
-  it('defines task-checkoff as a state-script command', async () => {
-    const stateSource = await fs.readFile(path.join(scriptsDir, 'comet-state.sh'), 'utf-8');
-
-    expect(stateSource).toContain('cmd_task_checkoff()');
-    expect(stateSource).toContain('validate_path_field "$task_file" "task file"');
-    expect(stateSource).toContain('TASK_TEXT="$task_text" awk');
-    expect(stateSource).toContain('task text must appear exactly once');
-    expect(stateSource).toContain('task is not checked');
-    expect(stateSource).toContain('task-checkoff)');
-    expect(stateSource).toContain('cmd_task_checkoff "$@"');
-  });
-});
-
 describeShell('comet shell scripts', () => {
   let tmpDir: string;
   let guardScript: string;
@@ -474,90 +460,6 @@ describeShell('comet shell scripts', () => {
 
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('.comet.yaml not found');
-  }, 20_000);
-
-  it('task-checkoff verifies one uniquely checked task', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'plan.md');
-    await writeFile(tasksFile, '- [x] Implement dispatch guard\n- [ ] Add docs\n');
-
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      'docs/plan.md',
-      'Implement dispatch guard',
-    ]);
-
-    expect(result.status).toBe(0);
-    expect(result.stdout).toContain('TASK_CHECKOFF: PASS');
-  }, 20_000);
-
-  it('task-checkoff rejects an unchecked task', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'plan.md');
-    await writeFile(tasksFile, '- [ ] Implement dispatch guard\n');
-
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      'docs/plan.md',
-      'Implement dispatch guard',
-    ]);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('task is not checked');
-  }, 20_000);
-
-  it('task-checkoff rejects duplicate task text across checkbox states', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'plan.md');
-    await writeFile(tasksFile, '- [x] Implement dispatch guard\n- [ ] Implement dispatch guard\n');
-
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      'docs/plan.md',
-      'Implement dispatch guard',
-    ]);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('task text must appear exactly once');
-  }, 20_000);
-
-  it('task-checkoff rejects paths outside the repository', async () => {
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      '../outside.md',
-      'Implement dispatch guard',
-    ]);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("cannot contain '..'");
-  }, 20_000);
-
-  it('task-checkoff rejects missing task file', async () => {
-    const result = runBash(tmpDir, stateScript, [
-      'task-checkoff',
-      'docs/nonexistent.md',
-      'Some task',
-    ]);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('Task file not found');
-  }, 20_000);
-
-  it('task-checkoff rejects empty task text', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'plan.md');
-    await writeFile(tasksFile, '- [x] Implement dispatch guard\n');
-
-    const result = runBash(tmpDir, stateScript, ['task-checkoff', 'docs/plan.md', '']);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('Task text cannot be empty');
-  }, 20_000);
-
-  it('task-checkoff rejects file with no checkbox lines', async () => {
-    const tasksFile = path.join(tmpDir, 'docs', 'empty.md');
-    await writeFile(tasksFile, '# Plan\n\nNo tasks here.\n');
-
-    const result = runBash(tmpDir, stateScript, ['task-checkoff', 'docs/empty.md', 'Some task']);
-
-    expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain('task text must appear exactly once');
   }, 20_000);
 
   it('comet-env.sh exports bundled script paths from its own directory', async () => {
@@ -3875,7 +3777,7 @@ describeShell('comet shell scripts', () => {
       expect(indexContent).toContain('Auto Sync Feature');
     }, 20_000);
 
-    it('guard --apply archive moves INDEX entry to Completed', async () => {
+    it('guard --apply archive does not move INDEX entry (handled by comet-archive.sh)', async () => {
       await createChange(
         tmpDir,
         'archive-sync',
@@ -3913,11 +3815,10 @@ describeShell('comet shell scripts', () => {
         path.join(tmpDir, 'docs', 'superpowers', 'INDEX.md'),
         'utf-8',
       );
-      // Entry should be in Completed section, not In Progress
-      const completedSection = indexContent.split('## Completed')[1] || '';
-      expect(completedSection).toContain('Archive Sync Feature');
+      // Entry should still be in In Progress (guard does not move it)
+      // comet-archive.sh Step 7b handles index-complete
       const inProgressSection = indexContent.split('## In Progress')[1]?.split('## ')[0] || '';
-      expect(inProgressSection).not.toContain('Archive Sync Feature');
+      expect(inProgressSection).toContain('Archive Sync Feature');
     }, 20_000);
 
     it('guard --apply skips INDEX.md sync for hotfix workflow', async () => {

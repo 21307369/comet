@@ -1003,12 +1003,14 @@ cmd_conflict_check() {
         yellow "INDEX HIT: Keyword '$kw' found in Design Registry — feature: $feature_name" >&2
         if [ -n "$doc_link" ]; then
           local doc_path
-          doc_path=$(echo "$doc_link" | sed 's/\[design\](\(.*\))/\1/')
+          doc_path="${doc_link#\[design\](}"
+          doc_path="${doc_path%)}"
           found_docs="$found_docs\n  - docs/superpowers/$doc_path (INDEX keyword: $kw, feature: $feature_name)"
         fi
         if [ -n "$plan_link" ]; then
           local plan_path
-          plan_path=$(echo "$plan_link" | sed 's/\[plan\](\(.*\))/\1/')
+          plan_path="${plan_link#\[plan\](}"
+          plan_path="${plan_path%)}"
           found_docs="$found_docs\n  - docs/superpowers/$plan_path (INDEX keyword: $kw, feature: $feature_name)"
         fi
         conflicts=$((conflicts + 1))
@@ -1210,59 +1212,6 @@ cmd_scale() {
   green "[SCALE] verify_mode=$result"
 }
 
-cmd_task_checkoff() {
-  local task_file="$1"
-  local task_text="$2"
-
-  validate_path_field "$task_file" "task file"
-
-  if [ -z "$task_text" ]; then
-    red "ERROR: Task text cannot be empty" >&2
-    exit 1
-  fi
-
-  if [ ! -f "$task_file" ]; then
-    red "ERROR: Task file not found: $task_file" >&2
-    exit 1
-  fi
-
-  local counts
-  counts=$(TASK_TEXT="$task_text" awk '
-    BEGIN {
-      task = ENVIRON["TASK_TEXT"]
-    }
-    {
-      sub(/\r$/, "")
-      if ($0 == "- [ ] " task || $0 == "- [x] " task || $0 == "- [X] " task) {
-        total++
-      }
-      if ($0 == "- [x] " task || $0 == "- [X] " task) {
-        checked++
-      }
-    }
-    END {
-      printf "%d %d\n", total + 0, checked + 0
-    }
-  ' "$task_file")
-
-  local total="${counts%% *}"
-  local checked="${counts##* }"
-
-  if [ "$total" -ne 1 ]; then
-    red "ERROR: task text must appear exactly once in $task_file (found $total): $task_text" >&2
-    exit 1
-  fi
-
-  if [ "$checked" -ne 1 ]; then
-    red "ERROR: task is not checked in $task_file: $task_text" >&2
-    exit 1
-  fi
-
-  echo "TASK_CHECKOFF: PASS"
-  echo "FILE: $task_file"
-  echo "TASK: $task_text"
-}
-
 # Resolve the next workflow step after a guard --apply phase advance.
 # Reads the (already advanced) phase, workflow, and auto_transition, then emits
 # a deterministic next-step contract so skills don't hardcode the next skill name.
@@ -1374,7 +1323,7 @@ INDEXEOF
 cmd_index_add() {
   local change_name="$1"
   shift
-  local keywords="$*"
+  local keywords=("$@")
 
   # Ensure INDEX.md exists
   if [ ! -f "$INDEX_FILE" ]; then
@@ -1410,8 +1359,8 @@ cmd_index_add() {
 
   # Format keywords with backticks
   local kw_formatted=""
-  if [ -n "$keywords" ]; then
-    for kw in $keywords; do
+  if [ ${#keywords[@]} -gt 0 ]; then
+    for kw in "${keywords[@]}"; do
       if [ -n "$kw_formatted" ]; then
         kw_formatted="$kw_formatted, "
       fi
@@ -1709,13 +1658,6 @@ case "$SUBCOMMAND" in
     fi
     cmd_scale "$@"
     ;;
-  task-checkoff)
-    if [ $# -lt 2 ]; then
-      red "Usage: comet-state.sh task-checkoff <file> <task-text>" >&2
-      exit 1
-    fi
-    cmd_task_checkoff "$@"
-    ;;
   next)
     if [ $# -lt 1 ]; then
       red "Usage: comet-state.sh next <change-name>" >&2
@@ -1763,7 +1705,6 @@ case "$SUBCOMMAND" in
     echo "  check <change-name> <phase>    — Verify entry requirements for a phase" >&2
     echo "  conflict-check <name> [keywords...] — Scan for related existing documents" >&2
     echo "  scale <change-name>             — Assess and set verification mode based on metrics" >&2
-    echo "  task-checkoff <file> <task-text> — Verify one unique task is checked" >&2
     echo "  next <change-name>              — Resolve the next workflow step (auto/manual/done)" >&2
     echo "  index-init                      — Initialize INDEX.md design registry" >&2
     echo "  index-add <name> [keywords...]  — Add change to In Progress table" >&2
