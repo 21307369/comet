@@ -1,5 +1,7 @@
 import path from 'path';
 import os from 'os';
+import { rm } from 'fs/promises';
+import { fileExists } from '../utils/file-system.js';
 import { checkbox, select } from '@inquirer/prompts';
 import { PLATFORMS, getPlatformSkillsDir, type Platform } from '../core/platforms.js';
 import { detectPlatforms, hasSkills, getBaseDir, type InstallScope } from '../core/detect.js';
@@ -519,6 +521,25 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
     }
   } else {
     log('\n  CodeGraph: skipped');
+  // Clean up redundant Pi directories
+  if (selectedPlatformIds.includes('pi') && scope === 'global') {
+    const redundantDirs = [
+      path.join(os.homedir(), '.pi', 'skills'),
+      path.join(os.homedir(), '.pi', 'agent', 'skills'),
+    ];
+
+    for (const dir of redundantDirs) {
+      if (await fileExists(dir)) {
+        try {
+          await rm(dir, { recursive: true, force: true });
+          log(`  Cleaned: ${dir.replace(os.homedir(), '~')}`);
+        } catch (err) {
+          log(`  Failed to clean ${dir}: ${(err as Error).message}`);
+        }
+      }
+    }
+  }
+
   }
 
   if (scope === 'project') {
