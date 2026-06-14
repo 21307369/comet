@@ -22,6 +22,7 @@ type InitOptions = {
   json?: boolean;
   scope?: InstallScope;
   language?: string;
+  platform?: string[];
 };
 
 type InstallStatus = 'installed' | 'skipped' | 'failed';
@@ -201,8 +202,12 @@ async function selectLanguage(options: InitOptions): Promise<LanguageConfig> {
 
   return LANGUAGES.find((l) => l.id === langId) ?? LANGUAGES[0];
 }
-
 async function selectPlatforms(detected: Set<string>, options: InitOptions, lang: string): Promise<string[]> {
+  // If --platform is provided, use it directly
+  if (options.platform && options.platform.length > 0) {
+    return options.platform;
+  }
+
   const choices = PLATFORMS.map((p) => ({
     name: `${p.name}${detected.has(p.id) ? ` (${t(lang, 'detected')})` : ''}`,
     value: p.id,

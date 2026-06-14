@@ -25,6 +25,7 @@ program
   .option('--json', 'Output as JSON')
   .addOption(new Option('--scope <scope>', 'Install scope').choices(['global', 'project']))
   .addOption(new Option('--language <lang>', 'Language for skills').choices(['en', 'zh']))
+  .addOption(new Option('--platform <platforms...>', 'Platforms to install (comma-separated or multiple flags)').choices(['claude', 'cursor', 'codex', 'opencode', 'windsurf', 'cline', 'roocode', 'continue', 'github-copilot', 'gemini', 'amazon-q', 'qwen', 'kilocode', 'auggie', 'kiro', 'kimicode', 'lingma', 'junie', 'codebuddy', 'costrict', 'crush', 'factory', 'iflow', 'pi', 'qoder', 'antigravity', 'bob', 'forgecode', 'trae']))
   .action(async (targetPath = '.', options) => {
     try {
       await initCommand(targetPath, options);
