@@ -64,7 +64,7 @@ function buildSuperpowersInstallCommand(
     throw new Error(`No skills CLI agent names resolved for platforms: ${platformIds.join(', ')}`);
   }
 
-  const args = ['skills', 'add', 'obra/superpowers', '-y'];
+  const args = ['skills', 'add', '21307369/superpowers-zh', '-y'];
   if (scope === 'global') {
     args.push('-g');
   }
@@ -77,7 +77,7 @@ function buildSuperpowersInstallCommand(
 function buildLingmaSuperpowersStageCommand(): { command: string; args: string[] } {
   return {
     command: getNpxExecutable(),
-    args: ['skills', 'add', 'obra/superpowers', '-y', '--agent', LINGMA_STAGE_AGENT],
+    args: ['skills', 'add', '21307369/superpowers-zh', '-y', '--agent', LINGMA_STAGE_AGENT],
   };
 }
 
