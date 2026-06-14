@@ -126,7 +126,28 @@ If resuming with `build_pause: plan-ready` and the `plan` file exists, do not re
 
 Then continue this step to choose workspace isolation and execution method.
 
-Plan has been written to the current branch. Before starting execution, **ask the user to choose both workspace isolation and execution method in a single interaction**:
+**Check for global preferences first**:
+
+```bash
+PREFERRED_BUILD_MODE=$("$COMET_BASH" "$COMET_STATE" get-preference preferred_build_mode)
+PREFERRED_ISOLATION=$("$COMET_BASH" "$COMET_STATE" get-preference preferred_isolation)
+PREFERRED_TDD_MODE=$("$COMET_BASH" "$COMET_STATE" get-preference preferred_tdd_mode)
+```
+
+If all three preferences are set in `~/.comet/config.yaml`, use them directly without asking the user. Apply the preferences:
+
+```bash
+"$COMET_BASH" "$COMET_STATE" set <name> isolation "$PREFERRED_ISOLATION"
+"$COMET_BASH" "$COMET_STATE" set <name> build_mode "$PREFERRED_BUILD_MODE"
+"$COMET_BASH" "$COMET_STATE" set <name> tdd_mode "$PREFERRED_TDD_MODE"
+if [ "$PREFERRED_BUILD_MODE" = "subagent-driven-development" ]; then
+  "$COMET_BASH" "$COMET_STATE" set <name> subagent_dispatch confirmed
+fi
+```
+
+Then proceed to execute isolation (Step 3.1).
+
+If any preference is missing, ask the user to choose and optionally save to global config:
 
 **Workspace Isolation**:
 

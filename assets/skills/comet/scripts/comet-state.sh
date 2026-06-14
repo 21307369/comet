@@ -14,7 +14,9 @@
 #   index-add <name> [keywords...]  — Add change to In Progress table
 #   index-update <name> <field> <v> — Update design_doc or plan link in INDEX.md
 #   index-complete <name>           — Move from In Progress to Completed
+#   index-complete <name>           — Move from In Progress to Completed
 #   index-clean-stale               — Remove entries for deleted changes
+#   get-preference <field>          — Read global preference from ~/.comet/config.yaml
 #
 # Workflows: full, hotfix, tweak
 # Phases for check: open, design, build, verify, archive
@@ -1646,6 +1648,25 @@ cmd_index_clean_stale() {
   rm -f /tmp/comet-stale-features.txt
 }
 
+# Read global preference from ~/.comet/config.yaml
+# Usage: get-preference <field>
+cmd_get_preference() {
+  local field="$1"
+  local config_file="${COMET_GLOBAL_CONFIG:-$HOME/.comet}/config.yaml"
+  
+  if [ ! -f "$config_file" ]; then
+    return 0
+  fi
+  
+  # Simple YAML parser for key: value format
+  local value
+  value=$(grep -E "^${field}:" "$config_file" 2>/dev/null | sed 's/^[^:]*: *//' | tr -d '\r' || true)
+  
+  if [ -n "$value" ]; then
+    echo "$value"
+  fi
+}
+
 # --- Main ---
 
 SUBCOMMAND="${1:-}"
@@ -1742,6 +1763,13 @@ case "$SUBCOMMAND" in
     ;;
   index-clean-stale)
     cmd_index_clean_stale
+    ;;
+  get-preference)
+    if [ $# -lt 1 ]; then
+      red "Usage: comet-state.sh get-preference <field>" >&2
+      exit 1
+    fi
+    cmd_get_preference "$@"
     ;;
   *)
     red "Unknown subcommand: $SUBCOMMAND" >&2
