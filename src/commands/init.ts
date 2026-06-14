@@ -521,6 +521,8 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
     }
   } else {
     log('\n  CodeGraph: skipped');
+  }
+
   // Clean up redundant Pi directories
   if (selectedPlatformIds.includes('pi') && scope === 'global') {
     const redundantDirs = [
@@ -538,8 +540,6 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
         }
       }
     }
-  }
-
   }
 
   if (scope === 'project') {
