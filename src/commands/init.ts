@@ -161,6 +161,12 @@ const TRANSLATIONS: Record<string, Record<TranslationKey, string>> = {
   },
 };
 
+/**
+ * 根据语言获取对应的翻译文本
+ * @param lang - 语言代码（'en' | 'zh'）
+ * @param key - 翻译键
+ * @returns 对应语言的翻译文本，找不到时回退到英文
+ */
 function t(lang: string, key: TranslationKey): string {
   return TRANSLATIONS[lang]?.[key] ?? TRANSLATIONS.en[key];
 }
@@ -175,6 +181,12 @@ const COMET_BANNER = [
   `            OpenSpec + Superpowers Workflow       `,
 ].join('\n');
 
+/**
+ * 交互式选择安装范围（项目级或全局）
+ * @param options - 初始化选项
+ * @param lang - 当前语言
+ * @returns 选中的安装范围
+ */
 async function selectScope(options: InitOptions, lang: string): Promise<InstallScope> {
   if (options.scope) return options.scope;
   if (options.yes) return 'project';
@@ -188,6 +200,11 @@ async function selectScope(options: InitOptions, lang: string): Promise<InstallS
   });
 }
 
+/**
+ * 交互式选择语言
+ * @param options - 初始化选项
+ * @returns 选中的语言配置
+ */
 async function selectLanguage(options: InitOptions): Promise<LanguageConfig> {
   if (options.language) {
     return LANGUAGES.find((l) => l.id === options.language) ?? LANGUAGES[0];
@@ -202,6 +219,13 @@ async function selectLanguage(options: InitOptions): Promise<LanguageConfig> {
   return LANGUAGES.find((l) => l.id === langId) ?? LANGUAGES[0];
 }
 
+/**
+ * 交互式选择要安装的平台
+ * @param detected - 已检测到的平台集合
+ * @param options - 初始化选项
+ * @param lang - 当前语言
+ * @returns 选中的平台 ID 列表
+ */
 async function selectPlatforms(detected: Set<string>, options: InitOptions, lang: string): Promise<string[]> {
   const choices = PLATFORMS.map((p) => ({
     name: `${p.name}${detected.has(p.id) ? ` (${t(lang, 'detected')})` : ''}`,
@@ -217,6 +241,13 @@ async function selectPlatforms(detected: Set<string>, options: InitOptions, lang
   return checkbox({ message: t(lang, 'selectPlatforms'), choices, required: true });
 }
 
+/**
+ * 单个组件已存在时，询问用户是否覆盖
+ * @param componentName - 组件名称
+ * @param platformName - 平台名称
+ * @param lang - 当前语言
+ * @returns 用户选择：覆盖或跳过
+ */
 async function promptOverwriteChoice(
   componentName: string,
   platformName: string,
@@ -230,6 +261,13 @@ async function promptOverwriteChoice(
     ],
   });
 }
+/**
+ * 批量组件已存在时，询问用户批量覆盖、跳过或逐个选择
+ * @param platformName - 平台名称
+ * @param components - 已存在的组件列表
+ * @param lang - 当前语言
+ * @returns 用户选择：全部覆盖 / 全部跳过 / 逐个选择
+ */
 async function promptBulkOverwriteChoice(
   platformName: string,
   components: string[],
@@ -245,6 +283,13 @@ async function promptBulkOverwriteChoice(
   });
 }
 
+/**
+ * 根据批量覆盖选择结果应用 action 到组件计划
+ * @param plan - 原始组件计划
+ * @param choice - 批量选择结果（排除 'choose'）
+ * @param hasExisting - 各组件是否已存在
+ * @returns 更新后的组件计划
+ */
 function applyBulkOverwriteChoice<T extends ComponentPlan>(
   plan: T,
   choice: Exclude<BulkOverwriteChoice, 'choose'>,
@@ -261,6 +306,12 @@ function applyBulkOverwriteChoice<T extends ComponentPlan>(
   };
 }
 
+/**
+ * 根据现有状态和选项解析安装动作
+ * @param hasExisting - 目标是否已存在
+ * @param options - 初始化选项
+ * @returns 解析后的动作：install / overwrite / skip
+ */
 function resolveAction(
   hasExisting: boolean,
   options: InitOptions,
@@ -272,6 +323,12 @@ function resolveAction(
   return 'install';
 }
 
+/**
+ * 显示安装结果摘要
+ * @param results - 各平台的安装结果
+ * @param scope - 安装范围
+ * @param lang - 当前语言
+ */
 function displaySummary(results: PlatformResult[], scope: InstallScope, lang: string): void {
   const scopeLabel = scope === 'global' ? os.homedir() : 'project';
 
@@ -322,6 +379,11 @@ function displaySummary(results: PlatformResult[], scope: InstallScope, lang: st
   console.log(`    ${t(lang, 'getStartedTweak')}\n`);
 }
 
+/**
+ * 执行 Comet 初始化命令：选择语言、范围、平台并安装各组件
+ * @param targetPath - 目标路径
+ * @param options - 初始化选项
+ */
 export async function initCommand(targetPath: string, options: InitOptions = {}): Promise<void> {
   const projectPath = path.resolve(targetPath);
   const log = options.json ? () => undefined : console.log;
