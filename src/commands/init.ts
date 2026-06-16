@@ -226,7 +226,11 @@ async function selectLanguage(options: InitOptions): Promise<LanguageConfig> {
  * @param lang - 当前语言
  * @returns 选中的平台 ID 列表
  */
-async function selectPlatforms(detected: Set<string>, options: InitOptions, lang: string): Promise<string[]> {
+async function selectPlatforms(
+  detected: Set<string>,
+  options: InitOptions,
+  lang: string,
+): Promise<string[]> {
   const choices = PLATFORMS.map((p) => ({
     name: `${p.name}${detected.has(p.id) ? ` (${t(lang, 'detected')})` : ''}`,
     value: p.id,
