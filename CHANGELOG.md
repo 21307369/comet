@@ -2,6 +2,12 @@
 
 All notable changes to @rpamis/comet will be documented in this file.
 
+## What's Changed [0.4.0-beta.4] - 2026-07-09
+
+### Fixed
+
+- **Dashboard responsive workflow view**: `comet dashboard` now keeps the change workspace inside the viewport with the left navigation rail, preserves scroll position when opening artifact previews, and shows archived changes as complete instead of suggesting another verify step ([#170](https://github.com/rpamis/comet/issues/170)).
+
 ## What's Changed [0.4.0-beta.3] - 2026-07-08
 
 ### Fixed
