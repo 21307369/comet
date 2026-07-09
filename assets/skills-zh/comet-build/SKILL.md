@@ -30,7 +30,7 @@ fi
 
 **幂等性**：build 阶段所有操作可安全重复执行。读取 `.comet.yaml` 的 `phase` 字段确认仍在 build 阶段，读取 plan 文件头的 `base-ref`，再用 `grep -n '\- \[ \]' tasks.md | head -1` 找到第一个未勾选任务继续执行。已提交的任务不得重复提交。
 
-**代码库知识加载**：如果仓库根目录存在 `CODEBASE-KNOWLEDGE.md`，读取并作为搜索参考。该文件记录了历史 change 发现的弃用函数、死代码、已知 bug，避免重复踩坑。
+**代码库知识加载**：运行 `node "$COMET_KNOWLEDGE" get` 获取代码库知识。该知识库记录了历史 change 发现的弃用函数、死代码、已知 bug，避免重复踩坑。
 
 ### 1. 制定计划（Subagent Offload）
 
@@ -239,7 +239,7 @@ git commit -m "chore: add implementation plan"
 - `src/commands/deploy.ts` — 死代码，因并发 bug 被弃用
 ```
 
-change 归档时，将已知问题追加到仓库根目录的 `CODEBASE-KNOWLEDGE.md`（不存在则创建）。
+change 归档时，运行 `node "$COMET_KNOWLEDGE" append "<entry>"` 追加已知问题。
 
 
 **subagent 模式约束传递**：`subagent-driven-development` 模式下，此约束通过 `comet/reference/subagent-dispatch.md` 的 dispatch prompt 注入传递给每个后台 implementer。

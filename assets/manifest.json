@@ -33,6 +33,7 @@
     "comet/scripts/comet-hook-guard.mjs",
     "comet/scripts/comet-intent.mjs",
     "comet/scripts/comet-resume-probe.mjs",
+    "comet/scripts/comet-knowledge.mjs",
     "comet-open/SKILL.md",
     "comet-design/SKILL.md",
     "comet-build/SKILL.md",

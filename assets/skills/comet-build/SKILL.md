@@ -30,7 +30,7 @@ Proceed to Step 1 after verification passes. The script outputs specific failure
 
 **Idempotency**: All build phase operations can be safely re-executed. Read `.comet.yaml` `phase` field to confirm still in build, read plan header `base-ref`, then use `grep -n '\- \[ \]' tasks.md | head -1` to find the first unchecked task. Already-committed tasks must not be re-committed.
 
-**Codebase knowledge loading**: If `CODEBASE-KNOWLEDGE.md` exists at repo root, read it as search reference. This file records deprecated functions, dead code, and known bugs discovered by historical changes, avoiding repeated pitfalls.
+**Codebase knowledge loading**: Run `comet knowledge get` to retrieve codebase knowledge. This knowledge base records deprecated functions, dead code, and known bugs discovered by historical changes, avoiding repeated pitfalls.
 
 ### 1. Create Plan (Subagent Offload)
 
@@ -227,7 +227,7 @@ When executing tasks from tasks.md one by one, before modifying code for each ta
 - `src/commands/deploy.ts` — dead code, deprecated due to concurrency bug
 ```
 
-When archiving the change, append known issues to `CODEBASE-KNOWLEDGE.md` at repo root (create if not exists).
+When archiving the change, run `comet knowledge append "<entry>"` to append known issues.
 
 
 

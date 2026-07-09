@@ -8,6 +8,7 @@ import { ensureClassicRuntimeRun, transitionClassicRuntimeRun } from './classic-
 import { appendClassicStateEvent } from './classic-state-events.js';
 import { readClassicState, writeClassicState } from './classic-store.js';
 import { applyClassicTransition } from './classic-transitions.js';
+import { appendCodebaseKnowledge, type KnowledgeEntry } from './classic-knowledge.js';
 import {
   appendTrajectory,
   clearPendingAction,
@@ -181,6 +182,72 @@ async function annotateFrontmatter(
   output.stepsTotal += 1;
 }
 
+const KNOWN_ISSUES_HEADER = '## 已知问题';
+const KNOWN_ISSUES_HEADER_EN = '## Known Issues';
+
+async function appendTasksKnowledge(
+  output: ArchiveOutput,
+  archiveDir: string,
+  dryRun: boolean,
+): Promise<void> {
+  const tasksPath = path.join(archiveDir, 'tasks.md');
+  if (!(await exists(tasksPath))) return;
+
+  const tasksContent = await fs.readFile(tasksPath, 'utf-8');
+  const lines = tasksContent.split('\n');
+
+  // Find "已知问题" or "Known Issues" section
+  let inSection = false;
+  const entries: KnowledgeEntry[] = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === KNOWN_ISSUES_HEADER || trimmed === KNOWN_ISSUES_HEADER_EN) {
+      inSection = true;
+      continue;
+    }
+    // Exit section on next heading or empty line after entries
+    if (inSection && trimmed.startsWith('#')) break;
+    if (inSection && trimmed === '') {
+      if (entries.length > 0) break;
+      continue;
+    }
+    if (inSection && trimmed.startsWith('-')) {
+      const text = trimmed.replace(/^-\s*/, '');
+      if (text) {
+        entries.push({
+          date: new Date().toISOString().slice(0, 10),
+          text,
+        });
+      }
+    }
+  }
+
+  if (entries.length === 0) return;
+
+  if (dryRun) {
+    output.stderr.push(
+      yellow(`  [DRY-RUN] Would append ${entries.length} knowledge entries from tasks.md`),
+    );
+    output.stepsOk += 1;
+    output.stepsTotal += 1;
+    return;
+  }
+
+  const projectPath = process.cwd();
+  let appended = 0;
+  for (const entry of entries) {
+    const wasAppended = await appendCodebaseKnowledge(projectPath, entry);
+    if (wasAppended) appended += 1;
+  }
+  output.stderr.push(
+    green(
+      `  [OK] Appended ${appended} knowledge entries (${entries.length - appended} duplicates skipped)`,
+    ),
+  );
+  output.stepsOk += 1;
+  output.stepsTotal += 1;
+}
+
 async function verifyMainSpecsClean(): Promise<void> {
   const specsRoot = 'openspec/specs';
   if (!(await exists(specsRoot))) return;
@@ -332,6 +399,8 @@ export const classicArchiveCommand: ClassicCommandHandler = async (args) => {
       output.stderr.push(green('  [OK] Main specs verified clean'));
       output.stepsOk += 1;
       output.stepsTotal += 1;
+
+      await appendTasksKnowledge(output, archiveDir, false);
 
       if (designDoc) {
         await annotateFrontmatter(output, designDoc, archiveName, 'status: final', false);

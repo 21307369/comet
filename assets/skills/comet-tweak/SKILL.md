@@ -38,7 +38,7 @@ fi
 . "$COMET_ENV"
 ```
 
-**Codebase knowledge loading**: If `CODEBASE-KNOWLEDGE.md` exists at repo root, read it as search reference. This file records deprecated functions, dead code, and known bugs discovered by historical changes, avoiding repeated pitfalls.
+**Codebase knowledge loading**: Run `comet knowledge get` to retrieve codebase knowledge. This knowledge base records deprecated functions, dead code, and known bugs discovered by historical changes, avoiding repeated pitfalls.
 
 ### 1. Quick Open (preset open)
 
@@ -96,7 +96,7 @@ Before continuing or starting changes, handle uncommitted changes through `comet
 - `src/commands/deploy.ts` — dead code, deprecated due to concurrency bug
 ```
 
-When archiving the change, append known issues to `CODEBASE-KNOWLEDGE.md` at repo root (create if not exists).
+When archiving the change, run `comet knowledge append "<entry>"` to append known issues.
 3. After all tasks complete, explicitly run relevant project tests and build commands
 4. **Reuse decision check**: Before running build guard, must verify that reuse decisions recorded in tasks.md are reasonable. If existing code with matching signature was found but NEW was chosen, must document the rationale.
 

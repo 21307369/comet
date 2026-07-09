@@ -65,7 +65,7 @@ The script automatically executes:
 4. OpenSpec archive for delta-merge semantics and moving the change to the archive directory
 5. Main spec guard against leaked delta-only section headings
 6. Update `archived: true` through `comet-state transition <archive-name> archived`
-7. Check if tasks.md has a "Known Issues" section, if yes append to `CODEBASE-KNOWLEDGE.md` at repo root (create if not exists). Each entry format: `YYYY-MM-DD: <file>:<func>() — <issue>`. Deduplicate by comparing `<file>:<func>() — <issue>` part (ignoring date prefix), skip duplicate entries.
+7. Check if tasks.md has a "Known Issues" section, if yes run `comet knowledge append "<entry>"` to append (auto-dedup, skip duplicate entries).
 
 If script returns non-zero exit code, report error and stop.
 If script returns zero exit code, archive is complete.

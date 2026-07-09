@@ -65,7 +65,7 @@ fi
 4. 调用 OpenSpec archive 按 delta 语义合并主 spec 并移动 change 到归档目录
 5. 校验主 spec 未残留 delta-only section 标题
 6. 通过 `comet-state transition <archive-name> archived` 更新 `archived: true`
-7. 检查 tasks.md 是否有「已知问题」段落，如有则追加到仓库根目录的 `CODEBASE-KNOWLEDGE.md`（不存在则创建）。每条条目格式为 `YYYY-MM-DD: <file>:<func>() — <issue>`。去重时忽略日期前缀，只比对 `<file>:<func>() — <issue>` 部分，相同条目跳过不追加
+7. 检查 tasks.md 是否有「已知问题」段落，如有则运行 `node "$COMET_KNOWLEDGE" append "<entry>"` 追加（自动去重，重复条目跳过不追加）
 
 如脚本返回非零退出码，报告错误并停止。
 如脚本返回零退出码，归档完成。

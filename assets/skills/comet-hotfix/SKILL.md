@@ -26,7 +26,7 @@ Execution chain: open → build → root cause check → verify → archive. Hot
 
 Before starting, locate Comet scripts via `comet/reference/scripts.md`. When resuming from any entry point, first use `comet/reference/context-recovery.md` to confirm phase/workflow.
 
-**Codebase knowledge loading**: If `CODEBASE-KNOWLEDGE.md` exists at repo root, read it as search reference. This file records deprecated functions, dead code, and known bugs discovered by historical changes, avoiding repeated pitfalls.
+**Codebase knowledge loading**: Run `comet knowledge get` to retrieve codebase knowledge. This knowledge base records deprecated functions, dead code, and known bugs discovered by historical changes, avoiding repeated pitfalls.
 
 ### 1. Quick Open (preset open)
 
@@ -93,7 +93,7 @@ Before continuing or starting changes, handle uncommitted changes through `comet
 - `src/commands/deploy.ts` — dead code, deprecated due to concurrency bug
 ```
 
-When archiving the change, append known issues to `CODEBASE-KNOWLEDGE.md` at repo root (create if not exists).
+When archiving the change, run `comet knowledge append "<entry>"` to append known issues.
 3. After all tasks complete, explicitly run relevant project tests and build commands
 
 **If fix affects existing spec acceptance scenarios**:

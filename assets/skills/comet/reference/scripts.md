@@ -21,6 +21,7 @@ COMET_HANDOFF="$COMET_SCRIPTS_DIR/comet-handoff.mjs"
 COMET_ARCHIVE="$COMET_SCRIPTS_DIR/comet-archive.mjs"
 COMET_INTENT="$COMET_SCRIPTS_DIR/comet-intent.mjs"
 COMET_RESUME_PROBE="$COMET_SCRIPTS_DIR/comet-resume-probe.mjs"
+COMET_KNOWLEDGE="$COMET_SCRIPTS_DIR/comet-knowledge.mjs"
 
 # Stop workflow when script location fails
 if [ -z "$COMET_SCRIPTS_DIR" ]; then
@@ -29,7 +30,7 @@ if [ -z "$COMET_SCRIPTS_DIR" ]; then
 fi
 ```
 
-After loading comet, agents should run this bootstrap block once, then reuse `$COMET_GUARD`, `$COMET_STATE`, `$COMET_HANDOFF`, `$COMET_ARCHIVE`, `$COMET_INTENT`, and `$COMET_RESUME_PROBE` throughout the session.
+After loading comet, agents should run this bootstrap block once, then reuse `$COMET_GUARD`, `$COMET_STATE`, `$COMET_HANDOFF`, `$COMET_ARCHIVE`, `$COMET_INTENT`, `$COMET_RESUME_PROBE`, and `$COMET_KNOWLEDGE` throughout the session.
 
 | Variable | Purpose |
 |----------|---------|
@@ -39,6 +40,7 @@ After loading comet, agents should run this bootstrap block once, then reuse `$C
 | `COMET_ARCHIVE` | One-command archive and main spec sync |
 | `COMET_INTENT` | `/comet` entry intent recognition and route scoring |
 | `COMET_RESUME_PROBE` | Read-only Ambient Resume probe that decides whether to resume an active Comet workflow |
+| `COMET_KNOWLEDGE` | Repo-level `CODEBASE-KNOWLEDGE.md` read/write for known pitfalls and deprecated functions |
 
 ## Auto state update
 
@@ -59,6 +61,20 @@ node "$COMET_STATE" transition <change-name> verify-fail
 ```
 
 Archive completion is handled by `node "$COMET_ARCHIVE" <change-name>` after OpenSpec moves the change into its date-prefixed archive directory; do not manually transition an `<archive-name>`.
+
+## Repository Knowledge Base
+
+Read, append to, or clear the repo-level knowledge base file `CODEBASE-KNOWLEDGE.md`:
+
+```bash
+node "$COMET_KNOWLEDGE" get               # Print current knowledge base contents
+node "$COMET_KNOWLEDGE" append "<text>"    # Append a new entry (auto-timestamped)
+node "$COMET_KNOWLEDGE" clear              # Clear the knowledge base (keeps header)
+```
+
+Each appended entry is automatically prefixed with `- [YYYY-MM-DD] ` for easy context building by the agent.
+
+If `CODEBASE-KNOWLEDGE.md` does not yet exist, the first `append` creates it.
 
 ## Resolve next action
 

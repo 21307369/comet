@@ -38,7 +38,7 @@ fi
 . "$COMET_ENV"
 ```
 
-**代码库知识加载**：如果仓库根目录存在 `CODEBASE-KNOWLEDGE.md`，读取并作为搜索参考。该文件记录了历史 change 发现的弃用函数、死代码、已知 bug，避免重复踩坑。
+**代码库知识加载**：运行 `node "$COMET_KNOWLEDGE" get` 获取代码库知识。该知识库记录了历史 change 发现的弃用函数、死代码、已知 bug，避免重复踩坑。
 
 ### 1. 快速开启（preset open）
 
@@ -97,7 +97,7 @@ fi
 - `src/commands/deploy.ts` — 死代码，因并发 bug 被弃用
 ```
 
-change 归档时，将已知问题追加到仓库根目录的 `CODEBASE-KNOWLEDGE.md`（不存在则创建）。
+change 归档时，运行 `node "$COMET_KNOWLEDGE" append "<entry>"` 追加已知问题。
 3. 全部任务完成后，显式运行项目相关测试和构建命令
 4. **复用决策审查**：运行 build guard 前，必须验证 tasks.md 中记录的复用决策是否合理。如果找到了签名匹配的已有代码但选择了新建，必须说明理由。
 5. 运行阶段守卫完成 build → verify 过渡：

@@ -6,6 +6,7 @@ All notable changes to @rpamis/comet will be documented in this file.
 
 ### Added
 
+- **Codebase knowledge command**: Adds `comet knowledge` (get, search, append, clear) so Comet workflows can read and write a project `CODEBASE-KNOWLEDGE.md` that records historical findings like deprecated functions, dead code, and known bugs, helping agents avoid repeating past mistakes.
 - **Ambient resume**: Adds a low-noise Comet resume probe and managed project instruction block so agents can recover active workflows when the user resumes work without explicitly invoking `/comet`.
 
 ### Fixed

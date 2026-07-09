@@ -37,7 +37,6 @@ function findUsableBash(): string | null {
   }
   return null;
 }
-}
 
 function runNode(
   cwd: string,
@@ -221,6 +220,7 @@ describe('comet scripts', () => {
       'comet-yaml-validate.mjs',
       'comet-hook-guard.mjs',
       'comet-resume-probe.mjs',
+      'comet-knowledge.mjs',
     ]) {
       const content = await fs.readFile(path.join(scriptsDir, name), 'utf-8');
       const destination = path.join(tmpScriptsDir, name);
