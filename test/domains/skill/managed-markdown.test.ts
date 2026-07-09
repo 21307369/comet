@@ -96,6 +96,41 @@ describe('managed markdown blocks', () => {
     );
   });
 
+  it('normalizes CRLF content when merging into an existing CRLF file', async () => {
+    await fs.writeFile(filePath, `before${CRLF}`, 'utf8');
+
+    await mergeManagedMarkdownBlock(filePath, {
+      tagName: 'comet-ambient-resume',
+      content: 'line1\r\nline2\r\n',
+    });
+
+    const updated = await fs.readFile(filePath, 'utf8');
+    expect(updated).toBe(
+      [
+        'before',
+        '',
+        '<comet-ambient-resume>',
+        'line1',
+        'line2',
+        '</comet-ambient-resume>',
+        '',
+      ].join(CRLF),
+    );
+    expect(updated).not.toMatch(/\r\r\n/);
+  });
+
+  it('keeps trailing spaces while trimming trailing line endings from content', async () => {
+    const result = await mergeManagedMarkdownBlock(filePath, {
+      tagName: 'comet-ambient-resume',
+      content: 'body  \r\n',
+    });
+
+    expect(result.action).toBe('created');
+    expect(await fs.readFile(filePath, 'utf8')).toBe(
+      '<comet-ambient-resume>\nbody  \n</comet-ambient-resume>\n',
+    );
+  });
+
   it('replaces only the managed block', async () => {
     await fs.writeFile(
       filePath,
@@ -205,5 +240,16 @@ describe('managed markdown blocks', () => {
     const result = await removeManagedMarkdownBlock(filePath, 'comet-ambient-resume');
     expect(result.action).toBe('missing');
     expect(result.changed).toBe(false);
+  });
+
+  it('returns missing when removing an existing file with no managed block', async () => {
+    const original = ['before', 'body text', 'after'].join(CRLF);
+    await fs.writeFile(filePath, original, 'utf8');
+
+    const result = await removeManagedMarkdownBlock(filePath, 'comet-ambient-resume');
+
+    expect(result.action).toBe('missing');
+    expect(result.changed).toBe(false);
+    expect(await fs.readFile(filePath, 'utf8')).toBe(original);
   });
 });

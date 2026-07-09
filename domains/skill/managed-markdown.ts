@@ -27,6 +27,10 @@ function normalizeLineEndings(value: string): string {
   return value.replace(/\r\n/g, '\n');
 }
 
+function trimTrailingLineEndings(value: string): string {
+  return normalizeLineEndings(value).replace(/\n+$/u, '');
+}
+
 function restoreLineEndings(value: string, lineEnding: LineEnding): string {
   return lineEnding === '\r\n' ? value.replace(/\n/g, '\r\n') : value;
 }
@@ -47,7 +51,8 @@ export function renderManagedMarkdownBlock(
   lineEnding: LineEnding = '\n',
 ): string {
   validateTagName(tagName);
-  return `<${tagName}>${lineEnding}${content.trimEnd()}${lineEnding}</${tagName}>${lineEnding}`;
+  const normalizedContent = trimTrailingLineEndings(content);
+  return `<${tagName}>${lineEnding}${normalizedContent}${lineEnding}</${tagName}>${lineEnding}`;
 }
 
 function assertSingleCompleteBlock(
