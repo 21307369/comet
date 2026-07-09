@@ -102,4 +102,15 @@ describe('CLI help text', () => {
     expect(help.stdout).not.toContain('benchmark-plan');
     expect(help.stdout).not.toContain('benchmark-record');
   });
+
+  it('exposes ambient resume probe help', () => {
+    const help = runCli('--help');
+    const commandHelp = runCli('resume-probe', '--help');
+
+    expect(help.status, help.stderr).toBe(0);
+    expect(commandHelp.status, commandHelp.stderr).toBe(0);
+    expect(help.stdout).toContain('resume-probe');
+    expect(commandHelp.stdout).toContain('Probe whether an active Comet workflow should resume');
+    expect(commandHelp.stdout).toContain('--utterance');
+  });
 });

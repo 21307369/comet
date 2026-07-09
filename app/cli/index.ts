@@ -1,6 +1,7 @@
 import { Command, Option } from 'commander';
 import { initCommand } from '../commands/init.js';
 import { statusCommand } from '../commands/status.js';
+import { resumeProbeCommand } from '../commands/resume-probe.js';
 import { dashboardCommand } from '../commands/dashboard.js';
 import { doctorCommand } from '../commands/doctor.js';
 import { evalCommand as evalFacadeCommand } from '../commands/eval.js';
@@ -80,6 +81,18 @@ program
   .option('--json', 'Output as JSON')
   .action(async (targetPath = '.', options) => {
     await statusCommand(targetPath, options);
+  });
+
+program
+  .command('resume-probe [path]')
+  .description('Probe whether an active Comet workflow should resume')
+  .option('--utterance <text>', 'User request to classify', '')
+  .option('--stdin', 'Read the user request from stdin')
+  .option('--json', 'Output as JSON')
+  .option('--no-non-trivial-work', 'Treat the request as informational instead of executable work')
+  .option('--already-in-comet-flow', 'Report out_of_scope when the current turn is already inside Comet')
+  .action(async (targetPath = '.', options) => {
+    await resumeProbeCommand(targetPath, options);
   });
 
 program
