@@ -108,12 +108,39 @@ describe('symlink install mode', () => {
       expect(result.copied).toBeGreaterThan(0);
     });
 
-    it('does not replace an existing skills directory that contains unmanaged files', async () => {
+    it('links managed skills into an existing skills directory with unrelated user skills', async () => {
       const existingSkill = path.join(tmpDir, '.claude', 'skills', 'personal-skill', 'SKILL.md');
-      const existingNestedFile = path.join(tmpDir, '.claude', 'skills', 'comet', 'local-notes.md');
       await mkdir(path.dirname(existingSkill), { recursive: true });
-      await mkdir(path.dirname(existingNestedFile), { recursive: true });
       await writeFile(existingSkill, '# Personal Skill\n', 'utf-8');
+
+      const result = await copyCometSkillsForPlatform(
+        tmpDir,
+        mockPlatform,
+        true,
+        'skills',
+        'project',
+        'symlink',
+      );
+
+      expect(result.failed).toBe(0);
+      expect(await readFile(existingSkill, 'utf-8')).toBe('# Personal Skill\n');
+
+      const platformSkillsDir = path.join(tmpDir, '.claude', 'skills');
+      const stat = await lstat(platformSkillsDir);
+      expect(stat.isSymbolicLink()).toBe(false);
+
+      const cometSkillLink = path.join(platformSkillsDir, 'comet');
+      const cometSkillStat = await lstat(cometSkillLink);
+      expect(cometSkillStat.isSymbolicLink()).toBe(true);
+      expect(await realpath(cometSkillLink)).toBe(
+        await realpath(path.join(tmpDir, '.comet', 'skills', 'skills', 'comet')),
+      );
+      expect(await fileExists(path.join(cometSkillLink, 'SKILL.md'))).toBe(true);
+    });
+
+    it('does not replace an existing managed skill directory that contains unmanaged files', async () => {
+      const existingNestedFile = path.join(tmpDir, '.claude', 'skills', 'comet', 'local-notes.md');
+      await mkdir(path.dirname(existingNestedFile), { recursive: true });
       await writeFile(existingNestedFile, '# Local notes\n', 'utf-8');
 
       const result = await copyCometSkillsForPlatform(
@@ -126,12 +153,10 @@ describe('symlink install mode', () => {
       );
 
       expect(result.failed).toBe(1);
-      expect(await readFile(existingSkill, 'utf-8')).toBe('# Personal Skill\n');
       expect(await readFile(existingNestedFile, 'utf-8')).toBe('# Local notes\n');
 
-      const platformSkillsDir = path.join(tmpDir, '.claude', 'skills');
-      const stat = await lstat(platformSkillsDir);
-      expect(stat.isSymbolicLink()).toBe(false);
+      const cometSkillStat = await lstat(path.join(tmpDir, '.claude', 'skills', 'comet'));
+      expect(cometSkillStat.isSymbolicLink()).toBe(false);
     });
 
     it('uses copy behavior when mode is copy (default)', async () => {

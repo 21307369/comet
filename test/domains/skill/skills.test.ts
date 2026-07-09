@@ -116,6 +116,20 @@ describe('skills', () => {
       await expect(createWorkingDirs(tmpDir)).resolves.not.toThrow();
     });
 
+    it('installs ambient resume instructions while preserving user content', async () => {
+      await fs.writeFile(path.join(tmpDir, 'AGENTS.md'), '# User\n\nKeep this.\n', 'utf-8');
+
+      await createWorkingDirs(tmpDir, 'zh-CN');
+
+      const agents = await fs.readFile(path.join(tmpDir, 'AGENTS.md'), 'utf-8');
+      const claude = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
+      expect(agents).toContain('# User\n\nKeep this.');
+      expect(agents).toContain('<comet-ambient-resume>');
+      expect(agents).toContain('开始处理需要改动或调查的任务前');
+      expect(claude).toContain('<comet-ambient-resume>');
+      expect(claude).toContain('开始处理需要改动或调查的任务前');
+    });
+
     it('records the selected project language in Comet config', async () => {
       await createWorkingDirs(tmpDir, 'zh-CN');
 
@@ -1777,6 +1791,56 @@ describe('skills', () => {
       expect(manifest.skills).toContain('comet/reference/intent-frame.md');
       expect(manifest.skills).toContain('comet/scripts/comet-env.mjs');
       expect(manifest.skills).toContain('comet/scripts/comet-intent.mjs');
+    });
+
+    it('documents Ambient Resume in both Comet entry Skills', async () => {
+      const zh = await fs.readFile(
+        path.resolve('assets', 'skills-zh', 'comet', 'SKILL.md'),
+        'utf-8',
+      );
+      const en = await fs.readFile(
+        path.resolve('assets', 'skills', 'comet', 'SKILL.md'),
+        'utf-8',
+      );
+
+      expect(zh).toContain('Comet Ambient Resume');
+      expect(zh).toContain('node "$COMET_RESUME_PROBE" probe --stdin');
+      expect(zh).toContain('不把无关任务挂到 active Comet change');
+      expect(en).toContain('Comet Ambient Resume');
+      expect(en).toContain('node "$COMET_RESUME_PROBE" probe --stdin');
+      expect(en).toContain('Never attach unrelated work');
+    });
+
+    it('documents the resume probe script in both script references', async () => {
+      const zh = await fs.readFile(
+        path.resolve('assets', 'skills-zh', 'comet', 'reference', 'scripts.md'),
+        'utf-8',
+      );
+      const en = await fs.readFile(
+        path.resolve('assets', 'skills', 'comet', 'reference', 'scripts.md'),
+        'utf-8',
+      );
+
+      expect(zh).toContain('COMET_RESUME_PROBE="$COMET_SCRIPTS_DIR/comet-resume-probe.mjs"');
+      expect(zh).toContain('| `COMET_RESUME_PROBE` |');
+      expect(en).toContain('COMET_RESUME_PROBE="$COMET_SCRIPTS_DIR/comet-resume-probe.mjs"');
+      expect(en).toContain('| `COMET_RESUME_PROBE` |');
+    });
+
+    it('documents the Ambient Resume probe command in context recovery references', async () => {
+      const zh = await fs.readFile(
+        path.resolve('assets', 'skills-zh', 'comet', 'reference', 'context-recovery.md'),
+        'utf-8',
+      );
+      const en = await fs.readFile(
+        path.resolve('assets', 'skills', 'comet', 'reference', 'context-recovery.md'),
+        'utf-8',
+      );
+
+      expect(zh).toContain('comet/reference/scripts.md');
+      expect(zh).toContain('node "$COMET_RESUME_PROBE" probe --stdin');
+      expect(en).toContain('comet/reference/scripts.md');
+      expect(en).toContain('node "$COMET_RESUME_PROBE" probe --stdin');
     });
 
     it('keeps review_mode wired through state and schema scripts', async () => {

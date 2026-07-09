@@ -16,6 +16,7 @@ import {
   computeRuleDestPath,
   isManagedHookCommand,
 } from './platform-install.js';
+import { removeCometProjectInstructions } from './project-instructions.js';
 
 interface RemovalResult {
   removed: number;
@@ -486,4 +487,5 @@ export {
   removeCometRulesForPlatform,
   removeCometHooksForPlatform,
   removeWorkingDirs,
+  removeCometProjectInstructions,
 };

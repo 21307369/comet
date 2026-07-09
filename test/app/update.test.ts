@@ -208,6 +208,9 @@ describe('update command helpers', () => {
     expect(formatSkillUpdateCommand('global', claudePlatform, 'skills')).toBe(
       'copy assets/skills -> ~/.claude/skills/ (global)',
     );
+    expect(formatSkillUpdateCommand('project', claudePlatform, 'skills', 'symlink')).toBe(
+      'symlink via .comet/skills/ in .claude/skills/ (project)',
+    );
   });
 
   it('prints the skill update command when updating installed skills', async () => {
@@ -256,6 +259,103 @@ describe('update command helpers', () => {
       language: 'en',
       source: 'skills',
     });
+  });
+
+  it('returns stable JSON summary when no installed targets are found', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let json = '';
+    try {
+      await updateCommand(tmpDir, { json: true, skipNpm: true });
+      json = log.mock.calls.map((call) => call.join(' ')).join('\n');
+    } finally {
+      log.mockRestore();
+    }
+
+    const result = JSON.parse(json);
+    expect(result).toMatchObject({
+      npm: {
+        scope: 'skipped',
+        status: 'skipped',
+      },
+      skills: {
+        totalCopied: 0,
+        targets: [],
+      },
+      rules: {
+        totalCopied: 0,
+      },
+      hooks: {
+        totalInstalled: 0,
+      },
+      projectInstructions: {
+        updated: 0,
+      },
+      codegraph: 'skipped',
+    });
+  });
+
+  it('does not create or update root project instructions when only global targets are updated', async () => {
+    const fakeHome = path.join(tmpDir, 'fake-home');
+    await fs.mkdir(path.join(fakeHome, '.codex', 'skills', 'comet'), { recursive: true });
+    await fs.writeFile(
+      path.join(fakeHome, '.codex', 'skills', 'comet', 'SKILL.md'),
+      '# Comet\n\nUse this skill.',
+      'utf-8',
+    );
+    await fs.writeFile(path.join(tmpDir, 'AGENTS.md'), '# User\nKeep this.\n', 'utf-8');
+    await fs.writeFile(path.join(tmpDir, 'CLAUDE.md'), '# User\nAlso keep this.\n', 'utf-8');
+
+    const homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let json = '';
+    try {
+      await updateCommand(tmpDir, { json: true, skipNpm: true, scope: 'global' });
+      json = log.mock.calls.map((call) => call.join(' ')).join('\n');
+    } finally {
+      log.mockRestore();
+      homedirSpy.mockRestore();
+    }
+
+    const result = JSON.parse(json);
+    expect(result.projectInstructions.updated).toBe(0);
+
+    const agents = await fs.readFile(path.join(tmpDir, 'AGENTS.md'), 'utf-8');
+    const claude = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
+    expect(agents).toBe('# User\nKeep this.\n');
+    expect(claude).toBe('# User\nAlso keep this.\n');
+    expect(agents).not.toContain('<comet-ambient-resume>');
+    expect(claude).not.toContain('<comet-ambient-resume>');
+  });
+
+  it('installs ambient resume instructions and preserves existing user AGENTS/CLAUDE rules', async () => {
+    await fs.mkdir(path.join(tmpDir, '.claude', 'skills', 'comet'), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, '.claude', 'skills', 'comet', 'SKILL.md'),
+      '# Comet\n\nUse this skill.',
+      'utf-8',
+    );
+    await fs.writeFile(path.join(tmpDir, 'AGENTS.md'), '# User\n\nKeep this.\n', 'utf-8');
+    await fs.writeFile(path.join(tmpDir, 'CLAUDE.md'), '# User\n\nAlso keep this.\n', 'utf-8');
+
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let json = '';
+    try {
+      await updateCommand(tmpDir, { json: true, skipNpm: true });
+      json = log.mock.calls.map((call) => call.join(' ')).join('\n');
+    } finally {
+      log.mockRestore();
+    }
+
+    const result = JSON.parse(json);
+    expect(result.projectInstructions.updated).toBe(2);
+
+    const agents = await fs.readFile(path.join(tmpDir, 'AGENTS.md'), 'utf-8');
+    const claude = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
+    expect(agents).toContain('# User\n\nKeep this.');
+    expect(claude).toContain('# User\n\nAlso keep this.');
+    expect(agents).toContain('<comet-ambient-resume>');
+    expect(claude).toContain('<comet-ambient-resume>');
   });
 
   it('does not prompt to install CodeGraph when the project already has an index', async () => {

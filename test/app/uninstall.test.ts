@@ -546,6 +546,16 @@ describe('uninstallCommand interactive selection', () => {
   it('skips prompt with --json and uninstalls all', async () => {
     const claudePlatform = PLATFORMS.find((p) => p.id === 'claude')!;
     await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+    await fs.writeFile(
+      path.join(tmpDir, 'AGENTS.md'),
+      'before\n\n<comet-ambient-resume>\nbody\n</comet-ambient-resume>\nafter\n',
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(tmpDir, 'CLAUDE.md'),
+      '# Claude\n\n<comet-ambient-resume>\nbody\n</comet-ambient-resume>\n',
+      'utf-8',
+    );
 
     const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
     let jsonOutput;
@@ -561,6 +571,7 @@ describe('uninstallCommand interactive selection', () => {
 
     const result = JSON.parse(jsonOutput);
     expect(result.summary.targetsProcessed).toBeGreaterThan(0);
+    expect(result.projectInstructionsRemoved).toBe(2);
   });
 
   it('prints message when no targets found', async () => {
@@ -575,6 +586,30 @@ describe('uninstallCommand interactive selection', () => {
 
     expect(output).toContain('No Comet installations found');
     expect(mockedSelect).not.toHaveBeenCalled();
+  });
+
+  it('returns stable JSON summary when no targets are found', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let jsonOutput = '';
+    try {
+      await uninstallCommand(tmpDir, { json: true });
+      jsonOutput = log.mock.calls.map((c) => c.join(' ')).join('\n');
+    } finally {
+      log.mockRestore();
+    }
+
+    const result = JSON.parse(jsonOutput);
+    expect(result).toMatchObject({
+      targets: [],
+      workingDirsRemoved: 0,
+      summary: {
+        targetsProcessed: 0,
+        totalSkillsRemoved: 0,
+        totalRulesRemoved: 0,
+        totalHooksRemoved: 0,
+      },
+      projectInstructionsRemoved: 0,
+    });
   });
 
   it('uninstalls antigravity2 global skills correctly without deleting other config files', async () => {
@@ -601,5 +636,69 @@ describe('uninstallCommand interactive selection', () => {
     expect(await fileExists(skillsCometDir)).toBe(false);
     expect(await fileExists(manifestPath)).toBe(true);
     expect(JSON.parse(await fs.readFile(manifestPath, 'utf-8'))).toEqual({ user: 'settings' });
+  });
+
+  it('does not remove root managed project instructions with only global scope', async () => {
+    const fakeHome = path.join(tmpDir, 'fake-home');
+    await fs.mkdir(path.join(fakeHome, '.codex', 'skills', 'comet'), { recursive: true });
+    await fs.writeFile(
+      path.join(fakeHome, '.codex', 'skills', 'comet', 'SKILL.md'),
+      '# Comet\n\nUse this skill.',
+      'utf-8',
+    );
+
+    const agentsOriginal = 'before\n\n<comet-ambient-resume>\nmanaged\n</comet-ambient-resume>\nafter\n';
+    const claudeOriginal = '# User\n\n<comet-ambient-resume>\nmanaged\n</comet-ambient-resume>\n';
+    await fs.writeFile(path.join(tmpDir, 'AGENTS.md'), agentsOriginal, 'utf-8');
+    await fs.writeFile(path.join(tmpDir, 'CLAUDE.md'), claudeOriginal, 'utf-8');
+
+    const homedirSpy = vi.spyOn(os, 'homedir').mockReturnValue(fakeHome);
+
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let jsonOutput = '';
+    try {
+      await uninstallCommand(tmpDir, { json: true, force: true, scope: 'global' });
+      jsonOutput = log.mock.calls.map((c) => c.join(' ')).join('\n');
+    } finally {
+      log.mockRestore();
+      homedirSpy.mockRestore();
+    }
+
+    const result = JSON.parse(jsonOutput);
+    expect(result.projectInstructionsRemoved).toBe(0);
+
+    const agents = await fs.readFile(path.join(tmpDir, 'AGENTS.md'), 'utf-8');
+    const claude = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
+    expect(agents).toBe(agentsOriginal);
+    expect(claude).toBe(claudeOriginal);
+  });
+
+  it('removes only managed project instruction blocks and keeps user-authored content', async () => {
+    const claudePlatform = PLATFORMS.find((p) => p.id === 'claude')!;
+    await copyCometSkillsForPlatform(tmpDir, claudePlatform, true, 'skills', 'project');
+    await fs.writeFile(
+      path.join(tmpDir, 'AGENTS.md'),
+      '# User\n\nKeep this.\n<comet-ambient-resume>\nmanaged\n</comet-ambient-resume>\n',
+      'utf-8',
+    );
+    await fs.writeFile(
+      path.join(tmpDir, 'CLAUDE.md'),
+      '# User\n\nAlso keep this.\n<comet-ambient-resume>\nmanaged\n</comet-ambient-resume>\n',
+      'utf-8',
+    );
+
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    try {
+      await uninstallCommand(tmpDir, { force: true });
+    } finally {
+      log.mockRestore();
+    }
+
+    const agents = await fs.readFile(path.join(tmpDir, 'AGENTS.md'), 'utf-8');
+    const claude = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
+    expect(agents).toContain('Keep this.');
+    expect(agents).not.toContain('<comet-ambient-resume>');
+    expect(claude).toContain('Also keep this.');
+    expect(claude).not.toContain('<comet-ambient-resume>');
   });
 });

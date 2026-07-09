@@ -497,7 +497,7 @@ export async function initCommand(targetPath: string, options: InitOptions = {})
     const platformSkillsDir = getPlatformSkillsDir(platform, scope);
     const skillsPath =
       installMode === 'symlink'
-        ? `.comet/skills/ -> ${platformSkillsDir}/skills/`
+        ? `via .comet/skills/ in ${platformSkillsDir}/skills/`
         : `${scope === 'global' ? '~/' : ''}${platformSkillsDir}/skills/`;
 
     let cmStatus: InstallStatus = 'skipped';
