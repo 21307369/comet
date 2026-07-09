@@ -41,7 +41,7 @@ export function renderCometAmbientResumeContent(languageId: SkillLanguageId): st
     '',
     '## Comet Ambient Resume',
     '',
-    'In this repository, before starting non-trivial work, run the Comet resume probe if a Comet workflow may already be active.',
+    'In this repository, before starting non-trivial work, run the Comet resume probe (read-only) if a Comet workflow may already be active.',
     '',
     '- If the probe returns `auto_resume`, briefly state the selected active change and continue through its `nextCommand`.',
     '- If the probe returns `ask_user`, ask one short question and wait.',
