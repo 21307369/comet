@@ -1055,7 +1055,7 @@ git commit -m "feat: add ambient resume CLI"
   - `mergeManagedMarkdownBlock(filePath: string, options: ManagedMarkdownBlockOptions): Promise<ManagedMarkdownBlockResult>`
   - `removeManagedMarkdownBlock(filePath: string, tagName: string): Promise<ManagedMarkdownBlockResult>`
 
-- [ ] **Step 1: Write failing managed block tests**
+- [x] **Step 1: Write failing managed block tests**
 
 Create `test/domains/skill/managed-markdown.test.ts`:
 
@@ -1146,7 +1146,7 @@ describe('managed markdown blocks', () => {
 });
 ```
 
-- [ ] **Step 2: Run the failing helper tests**
+- [x] **Step 2: Run the failing helper tests**
 
 Run:
 
@@ -1156,7 +1156,7 @@ npx vitest run test/domains/skill/managed-markdown.test.ts
 
 Expected: FAIL because the helper module does not exist.
 
-- [ ] **Step 3: Implement managed markdown helper**
+- [x] **Step 3: Implement managed markdown helper**
 
 Create `domains/skill/managed-markdown.ts`:
 
@@ -1254,7 +1254,7 @@ export async function removeManagedMarkdownBlock(
 }
 ```
 
-- [ ] **Step 4: Run helper tests**
+- [x] **Step 4: Run helper tests**
 
 Run:
 
@@ -1264,7 +1264,7 @@ npx vitest run test/domains/skill/managed-markdown.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Task 4**
+- [x] **Step 5: Commit Task 4**
 
 ```bash
 git add domains/skill/managed-markdown.ts test/domains/skill/managed-markdown.test.ts
