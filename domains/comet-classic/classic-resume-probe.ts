@@ -1,9 +1,8 @@
 import path from 'path';
 import { promises as fs } from 'fs';
-import { parseDocument } from 'yaml';
 import { fileExists, readDir } from '../../platform/fs/file-system.js';
 import { inspectClassicChange, type ClassicDiagnostic } from './classic-diagnostics.js';
-import { readClassicState, readLegacyState } from './classic-store.js';
+import { readClassicState } from './classic-store.js';
 
 export const COMET_RESUME_PROBE_SCHEMA_VERSION = 'comet.resume_probe.v1' as const;
 
@@ -39,19 +38,13 @@ export interface CometResumeProbeResult {
 
 interface ActiveProbeChange {
   name: string;
-  directory: string;
   workflow: string;
   phase: string;
   nextCommand: string | null;
-  projectionComplete: boolean;
   diagnostic: ClassicDiagnostic;
   buildPause: string | null;
-  isolation: string | null;
-  buildMode: string | null;
-  tddMode: string | null;
-  reviewMode: string | null;
-  verifyResult: string | null;
-  archived: boolean;
+  hasClassicProjection: boolean;
+  verifyResult: 'pending' | 'pass' | 'fail' | null;
   text: string;
 }
 
@@ -103,46 +96,9 @@ function result(
   };
 }
 
-function nextCommandForPhase(phase: string): string | null {
-  switch (phase) {
-    case 'open':
-      return '/comet-open';
-    case 'design':
-      return '/comet-design';
-    case 'build':
-      return '/comet-build';
-    case 'verify':
-      return '/comet-verify';
-    case 'archive':
-      return '/comet-archive';
-    default:
-      return null;
-  }
-}
-
 async function readIfExists(filePath: string): Promise<string> {
   if (!(await fileExists(filePath))) return '';
   return fs.readFile(filePath, 'utf8');
-}
-
-async function parseClassicYaml(changeDir: string): Promise<Record<string, unknown> | null> {
-  const yamlFile = path.join(changeDir, '.comet.yaml');
-  const source = await readIfExists(yamlFile);
-  if (!source) return null;
-  try {
-    const document = parseDocument(source);
-    if (document.errors.length > 0) return null;
-    const value = document.toJS();
-    if (value === null || typeof value !== 'object' || Array.isArray(value)) return null;
-    return value as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function yamlString(value: unknown): string | null {
-  if (typeof value === 'string' && value.trim().length > 0) return value.trim();
-  return null;
 }
 
 async function changeSearchText(changeDir: string, classic: ActiveProbeChange): Promise<string> {
@@ -168,31 +124,22 @@ async function discoverActiveChanges(projectRoot: string): Promise<ActiveProbeCh
     if (!(await fileExists(path.join(changeDir, '.comet.yaml')))) continue;
 
     const projection = await readClassicState(changeDir);
-    const legacy = await readLegacyState(changeDir);
     const classic = projection.classic;
-    const workflow = classic?.workflow ?? legacy.workflow ?? 'unknown';
-    const phase = classic?.phase ?? legacy.phase ?? 'unknown';
-    if (phase === 'archive' || legacy.archived || classic?.archived) continue;
-    const rawState = await parseClassicYaml(changeDir);
-
-    const projectionComplete = Boolean(classic);
     const diagnostic = await inspectClassicChange(changeDir, entry);
-    const parsedBuildPause = yamlString(rawState?.build_pause);
+    const hasClassicProjection = Boolean(classic);
+    const phase = classic?.phase ?? diagnostic.phase;
+    const workflow = classic?.workflow ?? diagnostic.workflow;
+    if (phase === 'archive' || classic?.archived) continue;
+
     const change: ActiveProbeChange = {
       name: entry,
-      directory: changeDir,
       workflow,
       phase,
-      nextCommand: diagnostic.nextCommand ?? nextCommandForPhase(phase),
-      projectionComplete,
+      nextCommand: diagnostic.nextCommand,
       diagnostic,
-      buildPause: classic?.buildPause ?? parsedBuildPause,
-      isolation: classic?.isolation ?? null,
-      buildMode: classic?.buildMode ?? null,
-      tddMode: classic?.tddMode ?? null,
-      reviewMode: classic?.reviewMode ?? null,
+      buildPause: classic?.buildPause ?? null,
+      hasClassicProjection,
       verifyResult: classic?.verifyResult ?? null,
-      archived: classic?.archived ?? legacy.archived ?? false,
       text: '',
     };
     change.text = await changeSearchText(changeDir, change);
@@ -253,19 +200,13 @@ function includesAny(text: string, words: readonly string[]): boolean {
 }
 
 function hasDecisionPoint(change: ActiveProbeChange): boolean {
-  if (change.projectionComplete && !change.diagnostic.valid) return true;
+  if (!change.hasClassicProjection) return true;
+  if (!change.diagnostic.valid) return true;
   if (change.phase === 'archive') return true;
   if (change.verifyResult === 'fail') return true;
   if (change.diagnostic.runtimeEval && !change.diagnostic.runtimeEval.passed) return true;
   if (change.phase !== 'build') return false;
   if (change.buildPause === 'plan-ready') return true;
-  if (change.projectionComplete && (!change.isolation || !change.buildMode)) return true;
-  if (
-    change.projectionComplete &&
-    change.workflow === 'full' &&
-    (!change.tddMode || !change.reviewMode)
-  )
-    return true;
   return false;
 }
 
@@ -298,13 +239,9 @@ export async function resolveCometResumeProbe(
     return result('out_of_scope', null, 'low', 'already in Comet flow');
   }
   if (includesAny(lower, OPT_OUT_WORDS)) {
-    return result(
-      'out_of_scope',
-      null,
-      'low',
-      'user opted out of Comet resume',
-      [{ source: 'user', quote: utterance }],
-    );
+    return result('out_of_scope', null, 'low', 'user opted out of Comet resume', [
+      { source: 'user', quote: utterance },
+    ]);
   }
 
   const changes = await discoverActiveChanges(projectRoot);
@@ -318,13 +255,9 @@ export async function resolveCometResumeProbe(
     }
     return hasDecisionPoint(named)
       ? result('ask_user', named, 'low', 'active change is at a decision point')
-      : result(
-          'auto_resume',
-          named,
-          'high',
-          'request names an active change',
-          [{ source: 'user', quote: named.name }],
-        );
+      : result('auto_resume', named, 'high', 'request names an active change', [
+          { source: 'user', quote: named.name },
+        ]);
   }
 
   const [change] = changes;

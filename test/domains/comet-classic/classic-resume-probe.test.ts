@@ -21,8 +21,14 @@ async function createChange(
   await writeFile(path.join(root, 'proposal.md'), files['proposal.md'] ?? 'Improve cache ttl\n');
   await writeFile(path.join(root, 'design.md'), files['design.md'] ?? 'Cache ttl design\n');
   await writeFile(path.join(root, 'tasks.md'), files['tasks.md'] ?? '- [ ] Update cache ttl\n');
-  await writeFile(path.join(tmpDir, 'docs', 'superpowers', 'specs', 'cache-ttl.md'), '# Cache TTL\n');
-  await writeFile(path.join(tmpDir, 'docs', 'superpowers', 'plans', 'cache-ttl.md'), '- [ ] Update cache ttl\n');
+  await writeFile(
+    path.join(tmpDir, 'docs', 'superpowers', 'specs', 'cache-ttl.md'),
+    '# Cache TTL\n',
+  );
+  await writeFile(
+    path.join(tmpDir, 'docs', 'superpowers', 'plans', 'cache-ttl.md'),
+    '- [ ] Update cache ttl\n',
+  );
 }
 
 const buildYaml = [
@@ -34,6 +40,8 @@ const buildYaml = [
   'build_mode: executing-plans',
   'tdd_mode: tdd',
   'review_mode: standard',
+  'verify_mode: full',
+  'verified_at: null',
   'verify_result: pending',
   'auto_transition: true',
   'design_doc: docs/superpowers/specs/cache-ttl.md',
@@ -114,6 +122,27 @@ describe('resolveCometResumeProbe', () => {
     expect(result.reason).toContain('looks unrelated');
   });
 
+  it('asks the user and does not suggest nextCommand when state is missing required fields', async () => {
+    const invalidBuildYaml = buildYaml
+      .replace('verify_mode: full\n', '')
+      .replace('verified_at: null\n', '');
+    await createChange('cache-ttl', invalidBuildYaml);
+
+    const result = await resolveCometResumeProbe(tmpDir, {
+      schema_version: 'comet.resume_probe.v1',
+      utterance: '继续刚才的任务',
+      agent_context: { non_trivial_work: true, already_in_comet_flow: false },
+    });
+
+    expect(result).toMatchObject({
+      action: 'ask_user',
+      confidence: 'low',
+      changeName: 'cache-ttl',
+      nextCommand: null,
+    });
+    expect(result.reason).toContain('decision point');
+  });
+
   it('returns out_of_scope for pure questions', async () => {
     await createChange('cache-ttl', buildYaml);
 
@@ -145,7 +174,10 @@ describe('resolveCometResumeProbe', () => {
   });
 
   it('asks the user when build is waiting at plan-ready', async () => {
-    await createChange('cache-ttl', buildYaml.replace('build_pause: null', 'build_pause: plan-ready'));
+    await createChange(
+      'cache-ttl',
+      buildYaml.replace('build_pause: null', 'build_pause: plan-ready'),
+    );
 
     const result = await resolveCometResumeProbe(tmpDir, {
       schema_version: 'comet.resume_probe.v1',
