@@ -1293,7 +1293,7 @@ git commit -m "feat: add managed project instruction blocks"
   - `renderCometAmbientResumeContent(languageId: SkillLanguageId): string`
 - Consumes: `mergeManagedMarkdownBlock` and `removeManagedMarkdownBlock`
 
-- [ ] **Step 1: Write failing project instruction tests**
+- [x] **Step 1: Write failing project instruction tests**
 
 Create `test/domains/skill/project-instructions.test.ts`:
 
@@ -1370,7 +1370,7 @@ it('installs Ambient Resume instructions without replacing user guide content', 
 });
 ```
 
-- [ ] **Step 2: Run failing project instruction tests**
+- [x] **Step 2: Run failing project instruction tests**
 
 Run:
 
@@ -1380,7 +1380,7 @@ npx vitest run test/domains/skill/project-instructions.test.ts test/domains/skil
 
 Expected: FAIL because `project-instructions.ts` does not exist and `createWorkingDirs` does not install the block.
 
-- [ ] **Step 3: Implement project instruction module**
+- [x] **Step 3: Implement project instruction module**
 
 Create `domains/skill/project-instructions.ts`:
 
@@ -1471,7 +1471,7 @@ export async function removeCometProjectInstructions(
 }
 ```
 
-- [ ] **Step 4: Wire init/create working dirs**
+- [x] **Step 4: Wire init/create working dirs**
 
 Modify `domains/skill/platform-install.ts` imports:
 
@@ -1498,7 +1498,7 @@ async function createWorkingDirs(projectPath: string, language: string = 'en'): 
 }
 ```
 
-- [ ] **Step 5: Wire update and uninstall**
+- [x] **Step 5: Wire update and uninstall**
 
 Modify `app/commands/update.ts`:
 
@@ -1566,7 +1566,7 @@ Add `projectInstructionsRemoved` to JSON summary:
 projectInstructionsRemoved,
 ```
 
-- [ ] **Step 6: Run focused install/update/uninstall tests**
+- [x] **Step 6: Run focused install/update/uninstall tests**
 
 Run:
 
@@ -1576,7 +1576,7 @@ npx vitest run test/domains/skill/project-instructions.test.ts test/domains/skil
 
 Expected: PASS after updating any existing app tests that assert JSON summary shapes.
 
-- [ ] **Step 7: Commit Task 5**
+- [x] **Step 7: Commit Task 5**
 
 ```bash
 git add domains/skill/project-instructions.ts domains/skill/platform-install.ts domains/skill/uninstall.ts app/commands/update.ts app/commands/uninstall.ts test/domains/skill/project-instructions.test.ts test/domains/skill/skills.test.ts test/app/update.test.ts test/app/uninstall.test.ts
