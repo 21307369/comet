@@ -9667,7 +9667,9 @@ async function appendTasksKnowledge(output, archiveDir, dryRun) {
     if (wasAppended) appended += 1;
   }
   output.stderr.push(
-    green(`  [OK] Appended ${appended} knowledge entries (${entries.length - appended} duplicates skipped)`)
+    green(
+      `  [OK] Appended ${appended} knowledge entries (${entries.length - appended} duplicates skipped)`
+    )
   );
   output.stepsOk += 1;
   output.stepsTotal += 1;
