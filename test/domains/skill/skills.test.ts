@@ -125,9 +125,9 @@ describe('skills', () => {
       const claude = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
       expect(agents).toContain('# User\n\nKeep this.');
       expect(agents).toContain('<comet-ambient-resume>');
-      expect(agents).toContain('开始非平凡工作前');
+      expect(agents).toContain('开始处理需要改动或调查的任务前');
       expect(claude).toContain('<comet-ambient-resume>');
-      expect(claude).toContain('开始非平凡工作前');
+      expect(claude).toContain('开始处理需要改动或调查的任务前');
     });
 
     it('records the selected project language in Comet config', async () => {

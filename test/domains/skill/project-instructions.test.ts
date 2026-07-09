@@ -22,7 +22,7 @@ describe('Comet project instructions', () => {
       const content = await fs.readFile(path.join(tmpDir, name), 'utf8');
       expect(content).toContain('<comet-ambient-resume>');
       expect(content).toContain('</comet-ambient-resume>');
-      expect(content).toContain('开始非平凡工作前');
+      expect(content).toContain('开始处理需要改动或调查的任务前');
     }
   });
 
@@ -36,8 +36,8 @@ describe('Comet project instructions', () => {
     const content = await fs.readFile(agents, 'utf8');
     expect(content.startsWith('# User Rules\n\n必须中文回答。')).toBe(true);
     expect(content.match(/<comet-ambient-resume>/gu)).toHaveLength(1);
-    expect(content).toContain('开始非平凡工作前');
-    expect(content).not.toContain('before starting non-trivial work');
+    expect(content).toContain('开始处理需要改动或调查的任务前');
+    expect(content).not.toContain('before starting work that may need code changes or investigation');
   });
 
   it('removes only the managed block', async () => {

@@ -1322,7 +1322,7 @@ describe('Comet project instructions', () => {
       const content = await fs.readFile(path.join(tmpDir, name), 'utf8');
       expect(content).toContain('<comet-ambient-resume>');
       expect(content).toContain('</comet-ambient-resume>');
-      expect(content).toContain('开始非平凡工作前');
+      expect(content).toContain('开始处理需要改动或调查的任务前');
     }
   });
 
@@ -1336,8 +1336,8 @@ describe('Comet project instructions', () => {
     const content = await fs.readFile(agents, 'utf8');
     expect(content.startsWith('# User Rules\n\n必须中文回答。')).toBe(true);
     expect(content.match(/<comet-ambient-resume>/gu)).toHaveLength(1);
-    expect(content).toContain('开始非平凡工作前');
-    expect(content).not.toContain('before starting non-trivial work');
+    expect(content).toContain('开始处理需要改动或调查的任务前');
+    expect(content).not.toContain('before starting work that may need code changes or investigation');
   });
 
   it('removes only the managed block', async () => {
@@ -1413,7 +1413,7 @@ export function renderCometAmbientResumeContent(languageId: SkillLanguageId): st
       '',
       '## Comet Ambient Resume',
       '',
-      '在这个仓库中，开始非平凡工作前，如果可能存在活跃 Comet workflow，先运行只读 resume probe。',
+      '在这个仓库中，开始处理需要改动或调查的任务前，如果可能存在活跃 Comet workflow，先运行只读 resume probe。',
       '',
       '- 如果 probe 返回 `auto_resume`，简短说明选中的 active change，并按 `nextCommand` 恢复。',
       '- 如果 probe 返回 `ask_user`，只问一个简短问题并等待用户回复。',
@@ -1427,7 +1427,7 @@ export function renderCometAmbientResumeContent(languageId: SkillLanguageId): st
     '',
     '## Comet Ambient Resume',
     '',
-    'In this repository, before starting non-trivial work, run the Comet resume probe if a Comet workflow may already be active.',
+    'In this repository, before starting work that may need code changes or investigation, run the Comet resume probe if a Comet workflow may already be active.',
     '',
     '- If the probe returns `auto_resume`, briefly state the selected active change and continue through its `nextCommand`.',
     '- If the probe returns `ask_user`, ask one short question and wait.',
@@ -1659,7 +1659,7 @@ In `assets/skills-zh/comet/SKILL.md`, add this subsection near Step 0:
 ````md
 ### Comet Ambient Resume
 
-当用户未显式输入 `/comet`，但当前仓库可能已有 active Comet change 时，开始非平凡工作前先运行只读探针：
+当用户未显式输入 `/comet`，但当前仓库可能已有 active Comet change 时，开始处理需要改动或调查的任务前先运行只读探针：
 
 ```bash
 node "$COMET_RESUME_PROBE" probe --stdin
@@ -1691,7 +1691,7 @@ In `assets/skills-zh/comet/reference/context-recovery.md`, add:
 ```md
 ## 未显式 `/comet` 的恢复
 
-如果用户没有提 `/comet`，但本仓库可能有 active change，开始非平凡工作前先运行 Ambient Resume 探针。只有返回 `auto_resume` 才自动恢复；`ask_user` 必须短问用户；`out_of_scope` 和 `none` 不进入 workflow。
+如果用户没有提 `/comet`，但本仓库可能有 active change，开始处理需要改动或调查的任务前先运行 Ambient Resume 探针。只有返回 `auto_resume` 才自动恢复；`ask_user` 必须短问用户；`out_of_scope` 和 `none` 不进入 workflow。
 ```
 
 - [x] **Step 4: Sync English Skill docs**
@@ -1707,7 +1707,7 @@ Use this English copy:
 ````md
 ### Comet Ambient Resume
 
-When the user did not explicitly invoke `/comet`, but this repository may already have an active Comet change, run the read-only probe before starting non-trivial work:
+When the user did not explicitly invoke `/comet`, but this repository may already have an active Comet change, run the read-only probe before starting work that may need code changes or investigation:
 
 ```bash
 node "$COMET_RESUME_PROBE" probe --stdin

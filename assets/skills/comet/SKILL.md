@@ -42,7 +42,7 @@ Use the configured Comet artifact language as the output language for every Open
 
 ### Comet Ambient Resume
 
-When the user did not explicitly invoke `/comet`, but this repository may already have an active Comet change, run the read-only probe before starting non-trivial work:
+When the user did not explicitly invoke `/comet`, but this repository may already have an active Comet change, run the read-only probe before starting work that may need code changes or investigation:
 
 ```bash
 node "$COMET_RESUME_PROBE" probe --stdin

@@ -12,7 +12,7 @@
 
 现有 hook guard 是晚期防线：它能在写文件时阻止明显越过 phase 的行为，但它通常在 Agent 已经准备修改文件后才触发。现有 rule 也要求阶段感知，但长上下文和恢复摘要仍可能让 Agent 漏掉 `/comet` 入口。继续堆更长的自然语言规则会增加打扰，也不容易测试。
 
-因此需要一个低打扰的入口恢复能力：在 Agent 开始非平凡工作前，基于仓库中的 active Comet state 做一次只读探针。如果证据足够强，自动恢复到正确的下一步；如果有歧义，短问用户；如果明显无关，保持静默。
+因此需要一个低打扰的入口恢复能力：在 Agent 开始处理需要改动或调查的任务前，基于仓库中的 active Comet state 做一次只读探针。如果证据足够强，自动恢复到正确的下一步；如果有歧义，短问用户；如果明显无关，保持静默。
 
 这个 feature 命名为 **Comet Ambient Resume**，任务 slug 为 `comet-ambient-resume`。用户感知到的是 Comet 能在合适的时候回到 workflow；`resume-probe` 只是实现机制。
 
@@ -33,7 +33,7 @@ Comet 应借鉴 Superpowers 的强入口理念，但不照搬“1% 可能就必�
 
 ## 目标
 
-1. 在 Comet 项目中，Agent 开始非平凡工作前能发现 active Comet workflow。
+1. 在 Comet 项目中，Agent 开始处理需要改动或调查的任务前能发现 active Comet workflow。
 2. 只有单个 active change 且请求与该 change 高置信相关时，才自动恢复。
 3. 当用户请求明显是新事项、纯问答或与 active change 无关时，不自动接管。
 4. 当多个 active change、状态异常、处于用户决策点或相关性不明确时，只短问一次。
@@ -54,7 +54,7 @@ Comet 应借鉴 Superpowers 的强入口理念，但不照搬“1% 可能就必�
 
 ## 触发时机
 
-Ambient Resume 不是后台探测，也不是每条消息都强制恢复。它只在 Agent 准备开始非平凡工作时触发一次。
+Ambient Resume 不是后台探测，也不是每条消息都强制恢复。它只在 Agent 准备处理需要改动或调查的任务时触发一次。
 
 触发场景：
 
@@ -252,7 +252,7 @@ Ambient Resume 需要安装到项目根指令文件中，而不只依赖平台 r
 
 ## Comet Ambient Resume
 
-In this repository, before starting non-trivial work, run the Comet resume probe if a Comet workflow may already be active.
+In this repository, before starting work that may need code changes or investigation, run the Comet resume probe if a Comet workflow may already be active.
 
 - If the probe returns `auto_resume`, briefly state the selected active change and continue through its `nextCommand`.
 - If the probe returns `ask_user`, ask one short question and wait.

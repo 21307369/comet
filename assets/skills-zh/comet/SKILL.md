@@ -42,7 +42,7 @@ agent 做决策只需读本节，参考附录按需查阅。
 
 ### Comet Ambient Resume
 
-当用户未显式输入 `/comet`，但当前仓库可能已有 active Comet change 时，开始非平凡工作前先运行只读探针：
+当用户未显式输入 `/comet`，但当前仓库可能已有 active Comet change 时，开始处理需要改动或调查的任务前先运行只读探针：
 
 ```bash
 node "$COMET_RESUME_PROBE" probe --stdin
