@@ -44,7 +44,23 @@ export async function uninstallCommand(
 
   if (targets.length === 0) {
     if (options.json) {
-      console.log(JSON.stringify({ targets: [], results: [] }, null, 2));
+      console.log(
+        JSON.stringify(
+          {
+            targets: [],
+            workingDirsRemoved: 0,
+            summary: {
+              targetsProcessed: 0,
+              totalSkillsRemoved: 0,
+              totalRulesRemoved: 0,
+              totalHooksRemoved: 0,
+            },
+            projectInstructionsRemoved: 0,
+          },
+          null,
+          2,
+        ),
+      );
       return;
     }
     log('  No Comet installations found. Nothing to uninstall.\n');

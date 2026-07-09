@@ -258,6 +258,39 @@ describe('update command helpers', () => {
     });
   });
 
+  it('returns stable JSON summary when no installed targets are found', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let json = '';
+    try {
+      await updateCommand(tmpDir, { json: true, skipNpm: true });
+      json = log.mock.calls.map((call) => call.join(' ')).join('\n');
+    } finally {
+      log.mockRestore();
+    }
+
+    const result = JSON.parse(json);
+    expect(result).toMatchObject({
+      npm: {
+        scope: 'skipped',
+        status: 'skipped',
+      },
+      skills: {
+        totalCopied: 0,
+        targets: [],
+      },
+      rules: {
+        totalCopied: 0,
+      },
+      hooks: {
+        totalInstalled: 0,
+      },
+      projectInstructions: {
+        updated: 0,
+      },
+      codegraph: 'skipped',
+    });
+  });
+
   it('does not create or update root project instructions when only global targets are updated', async () => {
     const fakeHome = path.join(tmpDir, 'fake-home');
     await fs.mkdir(path.join(fakeHome, '.codex', 'skills', 'comet'), { recursive: true });

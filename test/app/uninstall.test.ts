@@ -588,6 +588,30 @@ describe('uninstallCommand interactive selection', () => {
     expect(mockedSelect).not.toHaveBeenCalled();
   });
 
+  it('returns stable JSON summary when no targets are found', async () => {
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined);
+    let jsonOutput = '';
+    try {
+      await uninstallCommand(tmpDir, { json: true });
+      jsonOutput = log.mock.calls.map((c) => c.join(' ')).join('\n');
+    } finally {
+      log.mockRestore();
+    }
+
+    const result = JSON.parse(jsonOutput);
+    expect(result).toMatchObject({
+      targets: [],
+      workingDirsRemoved: 0,
+      summary: {
+        targetsProcessed: 0,
+        totalSkillsRemoved: 0,
+        totalRulesRemoved: 0,
+        totalHooksRemoved: 0,
+      },
+      projectInstructionsRemoved: 0,
+    });
+  });
+
   it('uninstalls antigravity2 global skills correctly without deleting other config files', async () => {
     const fakeHome = path.join(tmpDir, 'fake-home');
     const configDir = path.join(fakeHome, '.gemini', 'config');

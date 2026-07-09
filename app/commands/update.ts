@@ -314,6 +314,7 @@ export async function updateCommand(
             skills: { totalCopied: 0, targets: [] },
             rules: { totalCopied: 0 },
             hooks: { totalInstalled: 0 },
+            projectInstructions: { updated: 0 },
             codegraph: 'skipped',
           },
           null,
