@@ -39,6 +39,7 @@ type InitOptions = {
   scope?: InstallScope;
   language?: string;
   installMode?: InstallMode;
+  platform?: string[];
 };
 
 type InstallStatus = 'installed' | 'skipped' | 'failed';
@@ -115,6 +116,11 @@ async function selectPlatforms(
   options: InitOptions,
   lang: string,
 ): Promise<string[]> {
+  // If --platform is provided, use it directly
+  if (options.platform && options.platform.length > 0) {
+    return options.platform;
+  }
+
   const choices = PLATFORMS.map((p) => ({
     name: `${p.name}${detected.has(p.id) ? ` (${t(lang, 'detected')})` : ''}`,
     summaryName: p.name,

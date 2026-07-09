@@ -73,8 +73,10 @@ If full context is genuinely needed, explicitly run:
 node "$COMET_HANDOFF" <change-name> design --write --full
 ```
 
-Handoff package sources come from OpenSpec open phase artifacts:
-- `proposal.md`: goals, motivation, scope, non-goals
+2. For each incomplete task:
+   - **Search codebase first** (prohibited to skip): Use `lsp references` / `ast_grep` / `grep` to search for existing implementations that could be reused or extended. For tweak scenarios, focus on similar config items, text templates, and prompt templates
+   - Modify target files based on search results and task description (reuse/extend/new)
+   - Record search evidence next to the task in tasks.md: `<!-- search: <tools> → <decision> -->`
 - `design.md`: high-level architecture decisions, approach constraints
 - `tasks.md`: initial task boundaries
 - `specs/*/spec.md`: delta capability specs
@@ -103,6 +105,12 @@ Machine handoff: openspec/changes/<name>/.comet/handoff/spec-context.json
 OpenSpec artifacts are the upstream source of truth, but you must not weaken the Superpowers `brainstorming` clarification flow by "skipping redundant context exploration".
 Your task is to perform deep technical design based on the handoff package: implementation approach, technical risks, testing strategy, boundary conditions.
 If goals, scope, non-goals, acceptance scenarios, or key constraints remain unclear, you must continue asking questions and form the design proposal first; must not create the Design Doc after only one Q&A turn.
+
+Questioning protocol (from mattpocock/grilling, enhances brainstorming clarification):
+- Each clarification question includes your recommended answer (user only needs yes/no/correction)
+- Explore the codebase first for answers; only ask the user if you can't find them
+- Advance along the decision tree branch by branch, resolving one dependency at a time
+
 Do not rewrite proposal/spec; if you find OpenSpec delta spec missing acceptance scenarios, you may only propose Spec Patches and write them back to OpenSpec delta spec; do not create a second requirements spec in the Design Doc. Spec Patches are limited to supplementing acceptance scenarios, correcting ambiguous descriptions, or adding boundary conditions — they must not substantially rewrite the delta spec's structure or scope. If major changes are needed, flag them as design findings and return to brainstorming for confirmation.
 
 Design Doc frontmatter must be minimal, containing only:
@@ -128,6 +136,23 @@ After the skill loads, follow its guidance to produce design proposals (presente
 The brainstorming phase does not write to the Design Doc file; it only produces design proposals for Step 1c user confirmation. Only after confirmation should `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` be created and delta spec written back.
 
 For context compaction recovery, the agent must incrementally update `brainstorm-summary.md` during brainstorming. After each clarification round or proposal iteration, update the file whenever new confirmed facts, key constraints, candidate approaches, trade-offs/risks, testing strategy, or Spec Patch candidates emerge; mark unconfirmed items as "pending" or "candidate". This file is a recovery checkpoint, not the Design Doc, and must not replace the Step 1c user confirmation.
+
+**Optional Prototype Validation** (from mattpocock/prototype):
+
+When design contains key decisions that cannot be determined through reasoning alone (e.g., whether a state model feels right, whether UI interactions are intuitive), build a throwaway prototype to validate:
+
+- **Logic prototype**: When state machines/business logic are hard to reason about on paper, build a small interactive terminal app
+- **UI prototype**: When interface design is uncertain, generate multiple divergent variations for comparison
+
+Prototype rules:
+- Clearly marked as throwaway (e.g., `prototype-*.ts`)
+- One command to run
+- No persistence (state in memory)
+- Skip tests, error handling, abstractions
+- Surface full state after each step
+- Delete or absorb validated decisions into Design Doc when done
+
+Prototypes do not replace the Design Doc; they only validate key assumptions. Validation conclusions must be recorded in `brainstorm-summary.md`.
 
 ### 1c. User Confirms Design Proposal (Blocking Point)
 
@@ -202,6 +227,18 @@ canonical_spec: openspec
 ---
 ```
 
+If tasks.md contains 3 or more independent tasks, the Design Doc should include a "Reuse Analysis" section, placed after the technical approach and before the testing strategy:
+
+```markdown
+## Reuse Analysis
+
+| Requirement | Existing Code | Reuse Decision | Rationale |
+|-------------|--------------|----------------|-----------|
+| <feature> | <file:function or "none"> | <reuse/extend/new> | <search process and conclusion> |
+```
+
+During the brainstorming phase, proactively search the codebase for existing implementations and record them in this table. This analysis serves as a reference for the Build phase; actual reuse decisions are based on the per-task code search results during Build.
+
 Write the Design Doc to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
 If Spec Patches need to be written back, also edit the corresponding `specs/*/spec.md`.
 
@@ -227,6 +264,7 @@ If there are no delta spec changes, skip the handoff regeneration step. The stat
 ## Exit Conditions
 
 - Design Doc created and saved
+- If tasks.md contains 3 or more independent tasks, Design Doc contains "Reuse Analysis" section with clear reuse decisions
 - Design Doc frontmatter contains `comet_change`, `role: technical-design`, `canonical_spec: openspec`
 - `handoff_context` and `handoff_hash` written to `.comet.yaml` (enforced by guard)
 - `handoff_hash` matches current OpenSpec open phase artifacts (enforced by guard)

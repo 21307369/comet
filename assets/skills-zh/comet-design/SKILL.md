@@ -103,6 +103,12 @@ Machine handoff: openspec/changes/<name>/.comet/handoff/spec-context.json
 OpenSpec 产物是上游事实源，但不得用“跳过重复上下文探索”削弱 Superpowers `brainstorming` 的澄清流程。
 你的任务是基于交接包做深度技术设计：实现方案、技术风险、测试策略、边界条件。
 如发现目标、范围、非目标、验收场景或关键约束仍不清楚，必须先继续提问并形成设计方案，不得只进行一轮问答就创建 Design Doc。
+
+提问协议（来自 mattpocock/grilling，增强 brainstorming 提问质量）：
+- 每个澄清问题附带你的推荐答案（用户只需 yes/no/修正）
+- 先探索代码库寻找答案，找不到再问用户
+- 沿决策树逐分支推进，每次只解决一个决策依赖
+
 不要重写 proposal/spec；如发现 OpenSpec delta spec 缺少验收场景，只能提出 Spec Patch，并回写 OpenSpec delta spec；不要在 Design Doc 中创建第二份需求 spec。Spec Patch 仅限于补充验收场景、修正歧义描述或添加边界条件，不得大幅重写 delta spec 的结构或范围——如需大幅修改，应标记为设计发现并回到 brainstorming 确认。
 
 Design Doc frontmatter 必须最小化，只包含：
@@ -127,7 +133,24 @@ canonical_spec: openspec
 
 brainstorming 阶段不写入 Design Doc 文件，仅产出设计方案供 Step 1c 用户确认。确认后才创建 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` 并回写 delta spec。
 
-但为了上下文压缩恢复，brainstorming 过程中必须增量更新 `brainstorm-summary.md`。每轮澄清或方案迭代后，只要产生新的已确认事实、关键约束、候选方案、取舍/风险、测试策略或 Spec Patch 候选，就更新该文件；未确认内容必须标注为“待确认”或“候选”。该文件是恢复检查点，不是 Design Doc，也不得替代 Step 1c 的用户确认。
+但为了上下文压缩恢复，brainstorming 过程中必须增量更新 `brainstorm-summary.md`。每轮澄清或方案迭代后，只要产生新的已确认事实、关键约束、候选方案、取舍/风险、测试策略或 Spec Patch 候选，就更新该文件；未确认内容必须标注为"待确认"或"候选"。该文件是恢复检查点，不是 Design Doc，也不得替代 Step 1c 的用户确认。
+
+**可选原型验证**（来自 mattpocock/prototype）：
+
+当设计中存在难以通过推理确定的关键决策时（如状态模型是否合理、UI 交互是否直观），可构建一次性原型验证：
+
+- **逻辑原型**：状态机/业务逻辑难以纸上推演时，构建小型交互式终端应用
+- **UI 原型**：界面设计不确定时，生成多个差异化方案供对比
+
+原型规则：
+- 明确标记为 throwaway（如 `prototype-*.ts`）
+- 一个命令可运行
+- 无持久化（状态在内存）
+- 跳过测试、错误处理、抽象
+- 每步展示完整状态
+- 完成后删除或吸收验证结果到 Design Doc
+
+原型不是 Design Doc 的替代品，仅用于验证关键假设。验证结论必须记录在 `brainstorm-summary.md` 中。
 
 ### 1c. 用户确认设计方案（阻塞点）
 
@@ -203,6 +226,18 @@ canonical_spec: openspec
 ---
 ```
 
+如 tasks.md 包含 3 个以上独立任务，Design Doc 应包含「复用分析」章节，放在技术方案之后、测试策略之前：
+
+```markdown
+## 复用分析
+
+| 需求点 | 已有代码 | 复用决策 | 理由 |
+|--------|---------|---------|------|
+| <功能点> | <file:function 或 "无"> | <复用/扩展/新建> | <搜索过程和结论> |
+```
+
+在 brainstorming 阶段探索代码库时，应主动搜索已有实现并记录在此表中。此分析作为 Build 阶段的参考，实际复用决策以 Build 阶段每 Task 代码搜索的搜索结果为准。
+
 将 Design Doc 写入 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`。
 如需回写 delta spec（Spec Patch），同时编辑对应的 `specs/*/spec.md`。
 
@@ -228,6 +263,7 @@ node "$COMET_GUARD" <change-name> design --apply
 ## 退出条件
 
 - Design Doc 已创建并保存
+- 如 tasks.md 包含 3 个以上独立任务，Design Doc 包含「复用分析」章节且有明确的复用决策
 - Design Doc frontmatter 包含 `comet_change`、`role: technical-design`、`canonical_spec: openspec`
 - `handoff_context` 和 `handoff_hash` 已写入 `.comet.yaml`（由 guard 强制校验）
 - `handoff_hash` 与当前 OpenSpec open 阶段产物一致（由 guard 强制校验）

@@ -446,6 +446,115 @@ review_mode_selected() {
       ;;
   esac
 }
+code_search_evidence_present() {
+  local tasks="$CHANGE_DIR/tasks.md"
+  if [ ! -f "$tasks" ]; then
+    return 0
+  fi
+  if ! grep -q '\- \[x\]' "$tasks"; then
+    return 0
+  fi
+  local violations
+  violations=$(awk '
+    /- \[x\]/ {
+      task_line = $0
+      has_search = 0
+      if (index($0, "<!-- search:") > 0) has_search = 1
+      if (!has_search && NR < total_lines) {
+        getline next_line
+        if (index(next_line, "<!-- search:") > 0) has_search = 1
+      }
+      if (!has_search) {
+        gsub(/^[[:space:]]+/, "", task_line)
+        print "  " task_line
+      }
+    }
+  ' total_lines="$(wc -l < "$tasks")" "$tasks")
+  if [ -n "$violations" ]; then
+    echo "Completed tasks missing code search evidence (<!-- search: <tools> → <decision> -->):" >&2
+    echo "$violations" >&2
+    echo "Next: for each completed task, record search evidence. Example:" >&2
+    echo '  - [x] Implement login <!-- search: lsp references validateUser → reuse src/auth/login.ts:42 -->' >&2
+    return 1
+  fi
+  return 0
+}
+
+code_search_decision_quality_check() {
+  local tasks="$CHANGE_DIR/tasks.md"
+  if [ ! -f "$tasks" ]; then
+    return 0
+  fi
+  local suspicious
+  suspicious=$(awk '
+    /- \[x\]/ && /<!-- search:/ {
+      line = $0
+      # Skip if search found nothing (合理的新建)
+      has_zero = (match(line, /找到.*0/) || index(line, "无匹配") > 0 || index(line, "no match") > 0 || index(line, "none") > 0)
+      if (has_zero) next
+      # Flag if found existing code but chose new
+      has_found = (index(line, "found") > 0 || index(line, "找到") > 0)
+      is_new = (index(line, "new") > 0 || index(line, "新建") > 0)
+      if (has_found && is_new) {
+        gsub(/^[[:space:]]+/, "", line)
+        print "  " line
+      }
+    }
+  ' "$tasks")
+  if [ -n "$suspicious" ]; then
+    echo "$suspicious" >&2
+    echo "Next: verify these decisions are justified. If existing code was found, REUSE or EXTEND is expected." >&2
+    return 1
+  fi
+  return 0
+}
+
+design_doc_has_reuse_analysis() {
+  local design_doc workflow tasks
+  design_doc=$(yaml_field_value "design_doc" 2>/dev/null || true)
+  workflow=$(yaml_field_value "workflow" 2>/dev/null || true)
+  tasks="$CHANGE_DIR/tasks.md"
+  # Only check for full workflow with 3+ tasks
+  if [ "$workflow" != "full" ]; then
+    return 0
+  fi
+  if [ ! -f "$tasks" ]; then
+    return 0
+  fi
+  local task_count
+  task_count=$(grep -c '\- \[' "$tasks" 2>/dev/null || echo 0)
+  if [ "$task_count" -lt 3 ]; then
+    return 0
+  fi
+  if [ -z "$design_doc" ] || [ "$design_doc" = "null" ] || [ ! -f "$design_doc" ]; then
+    return 0
+  fi
+  if grep -q '复用分析\|Reuse Analysis' "$design_doc" 2>/dev/null; then
+    return 0
+  fi
+  echo "Design Doc missing '复用分析/Reuse Analysis' section (required for full workflow with 3+ tasks)" >&2
+  return 1
+}
+
+reuse_decision_review_recorded() {
+  local tasks review_mode
+  tasks="$CHANGE_DIR/tasks.md"
+  review_mode=$(yaml_field_value "review_mode" 2>/dev/null || true)
+  # Only check when review_mode is off (otherwise reviewer handles it)
+  if [ "$review_mode" != "off" ]; then
+    return 0
+  fi
+  if [ ! -f "$tasks" ]; then
+    return 0
+  fi
+  if grep -q '复用决策审查\|reuse decision review\|reuse decision check' "$tasks" 2>/dev/null; then
+    return 0
+  fi
+  echo "review_mode is off but no reuse decision review conclusion recorded in tasks.md" >&2
+  echo "Next: add reuse decision review conclusion to tasks.md before guard transition" >&2
+  return 1
+}
+
 
 verify_result_is_pass() {
   local result
@@ -471,6 +580,7 @@ design_handoff_context_valid() {
   recorded_hash=$(yaml_field_value "handoff_hash" 2>/dev/null || true)
 
   if [ -z "$context" ] || [ "$context" = "null" ]; then
+
     echo "handoff_context is missing from .comet.yaml" >&2
     echo "Next: run \"\$COMET_BASH\" \"\$COMET_HANDOFF\" $CHANGE design --write before invoking Superpowers." >&2
     return 1
@@ -666,6 +776,7 @@ guard_design() {
     check "Design Doc frontmatter links current change" design_doc_links_current_change
     check "Design Doc declares technical design role" design_doc_declares_technical_role
     check "Design Doc declares OpenSpec as canonical spec" design_doc_declares_canonical_spec
+    check "Design Doc has reuse analysis section (full workflow with 3+ tasks)" design_doc_has_reuse_analysis
   elif [ "$workflow" != "full" ]; then
     warn "  [WARN] No design_doc recorded in .comet.yaml (optional for hotfix/tweak)"
   fi
@@ -691,6 +802,9 @@ guard_build() {
   check "subagent dispatch confirmed" subagent_dispatch_confirmed
   check "tdd_mode selected" tdd_mode_selected
   check "review_mode selected" review_mode_selected
+  check "code search evidence present" code_search_evidence_present
+  check "code search decision quality" code_search_decision_quality_check
+  check "reuse decision review recorded (review_mode off)" reuse_decision_review_recorded
   check "tasks.md all tasks checked" tasks_all_done
   check "Superpowers plan all tasks checked" plan_tasks_all_done
   check "proposal.md exists" file_nonempty "$CHANGE_DIR/proposal.md"

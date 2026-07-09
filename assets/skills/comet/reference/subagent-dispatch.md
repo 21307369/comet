@@ -89,6 +89,17 @@ You MUST follow TDD: write a failing test first, watch it fail, then write minim
 ```
 
 The implementer or fix-agent return must provide **RED failure command and failure summary**, **GREEN pass command and pass summary**; missing either piece of evidence blocks entry into review. When `review_mode` requires a task reviewer, that reviewer must verify RED/GREEN evidence and test coverage while checking both spec compliance and code quality.
+### 3b. Code Search Hard Constraint
+
+Every implementer and fix agent MUST search the codebase for existing implementations before modifying any source code. This constraint applies regardless of `tdd_mode`.
+
+The dispatch prompt for every implementer and fix agent must include:
+
+```text
+Before writing any new code, you MUST search the codebase for existing implementations that could be reused or extended. You MUST include search evidence in your return status: tools used, search terms, findings (file:line or "none"), and reuse decision (reuse/extend/new with rationale). Record evidence as: `<!-- search: <tools> → <decision> -->`
+```
+
+The implementer or fix-agent return must include **search evidence** (tools used, search terms, findings, decision: reuse/extend/new with rationale); missing search evidence blocks entry into review. Both spec compliance reviewer and code quality reviewer must verify search evidence was provided **and the reuse decision is reasonable** (e.g., if existing code was found with matching signature, REUSE is expected; if reviewer disagrees with NEW decision, flag it).
 
 ### 4. Durable Progress Checkpoint
 
@@ -136,6 +147,7 @@ When a reviewer returns an item that cannot be verified from review material alo
 
 **After `review_mode` validation**, the main session:
 
+0. Before checkoff, append the implementer's search evidence (`<!-- search: <tools> → <decision> -->`) to the corresponding task line in tasks.md. If the implementer's return does not include search evidence, flag it as a review failure.
 1. Changes the saved unique task text from `- [ ]` to `- [x]` in the plan
 2. If a mapping exists, also checks off the OpenSpec task
 3. Commits this progress update

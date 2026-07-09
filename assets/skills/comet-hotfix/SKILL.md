@@ -26,6 +26,8 @@ Execution chain: open → build → root cause check → verify → archive. Hot
 
 Before starting, locate Comet scripts via `comet/reference/scripts.md`. When resuming from any entry point, first use `comet/reference/context-recovery.md` to confirm phase/workflow.
 
+**Codebase knowledge loading**: If `CODEBASE-KNOWLEDGE.md` exists at repo root, read it as search reference. This file records deprecated functions, dead code, and known bugs discovered by historical changes, avoiding repeated pitfalls.
+
 ### 1. Quick Open (preset open)
 
 Reuse Comet open capability to create change, but use hotfix defaults: do not execute `openspec-explore` long exploration, directly enter streamlined change creation.
@@ -75,11 +77,23 @@ Before continuing or starting changes, handle uncommitted changes through `comet
 
 1. Read `openspec/changes/<name>/tasks.md`, get incomplete task list
 2. For each incomplete task:
-   - Modify code according to task description
+   - **Search codebase first** (prohibited to skip): Use `lsp references` / `ast_grep` / `grep` to search for existing implementations that could be reused or extended. For hotfix scenarios, focus on existing fix logic in the bug's module and similar historical bug fixes
+   - Modify code based on search results and task description (reuse/extend/new)
+   - Record search evidence next to the task in tasks.md: `<!-- search: <tools> → <decision> -->`
    - Run project formatter (e.g., `mvn spotless:apply`, `npm run format`)
    - Run related tests to confirm pass
    - Check corresponding `- [ ]` to `- [x]` in tasks.md
    - Commit code, commit message format: `fix: <brief fix description>`
+**Codebase knowledge persistence**: Record codebase issues discovered during search (deprecated functions, dead code, known bugs) in a "Known Issues" section in tasks.md:
+
+```markdown
+## Known Issues
+
+- `src/utils/parse.ts:parseYaml()` — does not handle BOM header, crashes on BOM input
+- `src/commands/deploy.ts` — dead code, deprecated due to concurrency bug
+```
+
+When archiving the change, append known issues to `CODEBASE-KNOWLEDGE.md` at repo root (create if not exists).
 3. After all tasks complete, explicitly run relevant project tests and build commands
 
 **If fix affects existing spec acceptance scenarios**:
@@ -102,6 +116,8 @@ For specific investigation, minimal failing test, fix verification, and keeping 
 - Root cause check reveals deep architecture issues → Hits a qualitative-change signal; pause per the "Upgrade Assessment" section and let the user decide
 - Fix requires additional interface changes → Hits a qualitative-change signal (introduces new public API); pause per the "Upgrade Assessment" section and let the user decide
 
+
+**Reuse decision check**: Before running build guard, must verify that reuse decisions recorded in tasks.md are reasonable. If existing code with matching signature was found but NEW was chosen, must document the rationale.
 After root cause is confirmed eliminated, run phase guard to transition build → verify:
 
 ```bash

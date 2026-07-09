@@ -15,6 +15,30 @@ function posixPath(filePath: string): string {
   return path.resolve(filePath).replace(/\\/g, '/');
 }
 
+function findUsableBash(): string | null {
+  const candidates = [
+    process.env.COMET_TEST_BASH,
+    'bash',
+    ...(process.platform === 'win32'
+      ? [
+        'C:\\Program Files\\Git\\bin\\bash.exe',
+        'C:\\Program Files\\Git\\usr\\bin\\bash.exe',
+        'C:\\Program Files (x86)\\Git\\bin\\bash.exe',
+      ]
+      : []),
+  ].filter((candidate): candidate is string => Boolean(candidate));
+
+  for (const candidate of [...new Set(candidates)]) {
+    const probe = spawnSync(candidate, ['-lc', 'uname -s'], { encoding: 'utf-8' });
+    if (probe.status === 0 && probe.stdout.trim()) {
+      if (process.platform === 'win32' && /linux/i.test(probe.stdout)) continue;
+      return candidate;
+    }
+  }
+  return null;
+}
+}
+
 function runNode(
   cwd: string,
   script: string,
@@ -1950,7 +1974,7 @@ describe('comet scripts', () => {
         'archived: false',
         '',
       ].join('\n'),
-      '- [x] done\n',
+      '- [x] done <!-- search: grep done → no match, new -->\n',
     );
     await writeFile(
       path.join(tmpDir, 'package.json'),
@@ -2334,6 +2358,7 @@ describe('comet scripts', () => {
         'archived: false',
         '',
       ].join('\n'),
+      '- [x] done <!-- search: grep done → no match, new -->\n复用决策审查：已验证，决策合理\n',
     );
     await writeFile(
       path.join(tmpDir, 'package.json'),
@@ -2408,7 +2433,7 @@ describe('comet scripts', () => {
         'archived: false',
         '',
       ].join('\n'),
-      '- [x] done\n',
+      '- [x] done <!-- search: grep done → no match, new -->\n复用决策审查：已验证，决策合理\n',
     );
     await writeFile(
       path.join(tmpDir, 'package.json'),
