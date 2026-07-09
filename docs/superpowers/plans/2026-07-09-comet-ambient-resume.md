@@ -92,6 +92,8 @@ async function createChange(
   await writeFile(path.join(root, 'proposal.md'), files['proposal.md'] ?? 'Improve cache ttl\n');
   await writeFile(path.join(root, 'design.md'), files['design.md'] ?? 'Cache ttl design\n');
   await writeFile(path.join(root, 'tasks.md'), files['tasks.md'] ?? '- [ ] Update cache ttl\n');
+  await writeFile(path.join(tmpDir, 'docs', 'superpowers', 'specs', 'cache-ttl.md'), '# Cache TTL\n');
+  await writeFile(path.join(tmpDir, 'docs', 'superpowers', 'plans', 'cache-ttl.md'), '- [ ] Update cache ttl\n');
 }
 
 const buildYaml = [
