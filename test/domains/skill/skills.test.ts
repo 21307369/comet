@@ -1827,6 +1827,22 @@ describe('skills', () => {
       expect(en).toContain('| `COMET_RESUME_PROBE` |');
     });
 
+    it('documents the Ambient Resume probe command in context recovery references', async () => {
+      const zh = await fs.readFile(
+        path.resolve('assets', 'skills-zh', 'comet', 'reference', 'context-recovery.md'),
+        'utf-8',
+      );
+      const en = await fs.readFile(
+        path.resolve('assets', 'skills', 'comet', 'reference', 'context-recovery.md'),
+        'utf-8',
+      );
+
+      expect(zh).toContain('comet/reference/scripts.md');
+      expect(zh).toContain('node "$COMET_RESUME_PROBE" probe --stdin');
+      expect(en).toContain('comet/reference/scripts.md');
+      expect(en).toContain('node "$COMET_RESUME_PROBE" probe --stdin');
+    });
+
     it('keeps review_mode wired through state and schema scripts', async () => {
       const stateScript = await fs.readFile(
         path.resolve('domains', 'comet-classic', 'classic-state-command.ts'),

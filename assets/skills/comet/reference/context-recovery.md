@@ -16,7 +16,13 @@ If the check shows the actual phase, workflow, or evidence belongs to another sk
 
 ## Recovery Without Explicit `/comet`
 
-If the user did not mention `/comet`, but this repository may have an active change, run the Ambient Resume probe before starting work that may need code changes or investigation. Only `auto_resume` should resume automatically; `ask_user` must ask one short question; `out_of_scope` and `none` do not enter the workflow.
+If the user did not mention `/comet`, but this repository may have an active change, run the Ambient Resume probe before starting work that may need code changes or investigation. First locate scripts via `comet/reference/scripts.md` and ensure `$COMET_RESUME_PROBE` is available, then pass the current user request on stdin:
+
+```bash
+node "$COMET_RESUME_PROBE" probe --stdin
+```
+
+Only `auto_resume` should resume automatically; `ask_user` must ask one short question; `out_of_scope` and `none` do not enter the workflow.
 
 ## Recovery Steps
 
