@@ -64,7 +64,7 @@
   - `inspectClassicChange(changeDir, name)` from `domains/comet-classic/classic-diagnostics.ts`
   - `readClassicState(changeDir)` from `domains/comet-classic/classic-store.ts`
 
-- [ ] **Step 1: Write failing domain tests**
+- [x] **Step 1: Write failing domain tests**
 
 Create `test/domains/comet-classic/classic-resume-probe.test.ts` with these tests:
 
@@ -243,7 +243,7 @@ describe('resolveCometResumeProbe', () => {
 });
 ```
 
-- [ ] **Step 2: Run the failing test**
+- [x] **Step 2: Run the failing test**
 
 Run:
 
@@ -253,7 +253,7 @@ npx vitest run test/domains/comet-classic/classic-resume-probe.test.ts
 
 Expected: FAIL because `domains/comet-classic/classic-resume-probe.ts` does not exist.
 
-- [ ] **Step 3: Implement the domain module**
+- [x] **Step 3: Implement the domain module**
 
 Create `domains/comet-classic/classic-resume-probe.ts`:
 
@@ -555,7 +555,7 @@ export async function resolveCometResumeProbe(
 }
 ```
 
-- [ ] **Step 4: Run the domain test to verify it passes**
+- [x] **Step 4: Run the domain test to verify it passes**
 
 Run:
 
@@ -565,7 +565,7 @@ npx vitest run test/domains/comet-classic/classic-resume-probe.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 5: Commit Task 1**
+- [x] **Step 5: Commit Task 1**
 
 ```bash
 git add domains/comet-classic/classic-resume-probe.ts test/domains/comet-classic/classic-resume-probe.test.ts
