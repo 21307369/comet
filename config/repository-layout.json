@@ -98,4 +98,3 @@
   "scriptModules": ["benchmark", "build", "install", "lib", "lint", "release"],
   "testRoots": ["test"]
 }
-

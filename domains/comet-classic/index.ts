@@ -12,7 +12,6 @@ export * from './classic-intent.js';
 export * from './classic-intent-command.js';
 export * from './classic-resume-probe.js';
 export * from './classic-resume-probe-command.js';
-export * from './classic-resume-probe-entry.js';
 export * from './classic-state-command.js';
 export * from './classic-validate-command.js';
 export * from './classic-migrate.js';
