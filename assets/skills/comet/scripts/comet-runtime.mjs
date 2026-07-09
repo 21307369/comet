@@ -12416,13 +12416,9 @@ async function resolveCometResumeProbe(projectRoot, rawInput) {
       return result3("ask_user", null, "low", "multiple active changes require a change name");
     }
     if (dirtyFiles.length > 0) {
-      return result3(
-        "ask_user",
-        named,
-        "low",
-        "uncommitted worktree changes require attribution",
-        [{ source: "repo", quote: `${dirtyFiles.length} dirty file(s)` }]
-      );
+      return result3("ask_user", named, "low", "uncommitted worktree changes require attribution", [
+        { source: "repo", quote: `${dirtyFiles.length} dirty file(s)` }
+      ]);
     }
     return hasDecisionPoint(named) ? result3("ask_user", named, "low", "active change is at a decision point") : result3("auto_resume", named, "high", "request names an active change", [
       { source: "user", quote: named.name }

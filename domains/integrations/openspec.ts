@@ -157,7 +157,7 @@ function isCommandAvailable(command: string): boolean {
 }
 
 async function ensureOpenSpecCli(
-  scope: InstallScope,
+  _scope: InstallScope,
   projectPath: string,
   shouldInstall = true,
 ): Promise<'ready' | 'missing' | 'failed'> {
@@ -168,12 +168,9 @@ async function ensureOpenSpecCli(
   const label = alreadyInstalled ? 'Upgrading' : 'Installing';
   console.warn(`    ${label} OpenSpec CLI...`);
   try {
-    const npmArgs =
-      scope === 'global'
-        ? ['install', '-g', '@fission-ai/openspec@latest']
-        : ['install', '@fission-ai/openspec@latest'];
+    const npmArgs = ['install', '-g', '@fission-ai/openspec@latest'];
     execFileSync(getNpmExecutable(), npmArgs, {
-      cwd: projectPath,
+      cwd: os.homedir() || projectPath,
       stdio: 'inherit',
       timeout: 120_000,
       shell: process.platform === 'win32',

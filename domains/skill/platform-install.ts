@@ -73,6 +73,33 @@ function getManagedSkillReplacementPaths(manifest: Manifest): Set<string> {
   return allowed;
 }
 
+function getManagedSkillTopLevelEntries(manifest: Manifest): string[] {
+  const entries = new Set<string>();
+
+  for (const skillPath of getManagedSkillPaths(manifest)) {
+    const [topLevel] = skillPath.split('/').filter(Boolean);
+    if (topLevel) entries.add(topLevel);
+  }
+
+  return [...entries].sort();
+}
+
+function getManagedEntriesForTopLevel(
+  managedEntries: Set<string>,
+  topLevelEntry: string,
+): Set<string> {
+  const scopedEntries = new Set<string>();
+  const prefix = `${topLevelEntry}/`;
+
+  for (const entry of managedEntries) {
+    if (entry.startsWith(prefix)) {
+      scopedEntries.add(entry.slice(prefix.length));
+    }
+  }
+
+  return scopedEntries;
+}
+
 async function collectDirectoryEntryPaths(root: string, current = root): Promise<string[]> {
   const entries = await readdir(current, { withFileTypes: true });
   const paths: string[] = [];
@@ -174,10 +201,50 @@ async function createSymlink(
   await symlink(target, linkPath, type);
 }
 
+async function lstatOrNull(filePath: string): Promise<Awaited<ReturnType<typeof lstat>> | null> {
+  try {
+    return await lstat(filePath);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
+    throw err;
+  }
+}
+
+async function createSkillsSymlinks(
+  targetRoot: string,
+  linkRoot: string,
+  managedEntries: Set<string>,
+  topLevelEntries: string[],
+): Promise<number> {
+  const rootStat = await lstatOrNull(linkRoot);
+  if (!rootStat || rootStat.isSymbolicLink() || !rootStat.isDirectory()) {
+    await createSymlink(targetRoot, linkRoot, managedEntries);
+    return 0;
+  }
+
+  let failed = 0;
+  for (const topLevelEntry of topLevelEntries) {
+    const targetEntry = path.join(targetRoot, topLevelEntry);
+    const linkEntry = path.join(linkRoot, topLevelEntry);
+    const managedEntryScope = getManagedEntriesForTopLevel(managedEntries, topLevelEntry);
+
+    try {
+      await createSymlink(targetEntry, linkEntry, managedEntryScope);
+    } catch (err) {
+      failed++;
+      console.error(
+        `    Failed to create symlink ${linkEntry} -> ${targetEntry}: ${(err as Error).message}`,
+      );
+    }
+  }
+
+  return failed;
+}
+
 /**
  * Install skills using symlink mode:
  * 1. Copy skills to central store (.comet/skills/)
- * 2. Create symlink from platform dir to central store
+ * 2. Create symlinks from the platform skills dir to central store
  */
 async function installSkillsAsSymlink(
   baseDir: string,
@@ -199,6 +266,7 @@ async function installSkillsAsSymlink(
     throw new Error(`Invalid manifest at ${manifestPath}: "skills" must be an array`);
   }
   const managedSkillReplacementPaths = getManagedSkillReplacementPaths(manifest);
+  const managedSkillTopLevelEntries = getManagedSkillTopLevelEntries(manifest);
 
   // Step 1: Copy skills to central store
   let copied = 0;
@@ -227,12 +295,17 @@ async function installSkillsAsSymlink(
     }
   }
 
-  // Step 2: Create symlink from platform dir to central store
+  // Step 2: Create symlinks from platform dir to central store
   const platformSkillsDir = path.join(baseDir, getPlatformSkillsDir(platform, scope), 'skills');
   const centralSkillsDir = path.join(centralDir, 'skills');
 
   try {
-    await createSymlink(centralSkillsDir, platformSkillsDir, managedSkillReplacementPaths);
+    failedCount += await createSkillsSymlinks(
+      centralSkillsDir,
+      platformSkillsDir,
+      managedSkillReplacementPaths,
+      managedSkillTopLevelEntries,
+    );
   } catch (err) {
     failedCount++;
     console.error(

@@ -208,6 +208,9 @@ describe('update command helpers', () => {
     expect(formatSkillUpdateCommand('global', claudePlatform, 'skills')).toBe(
       'copy assets/skills -> ~/.claude/skills/ (global)',
     );
+    expect(formatSkillUpdateCommand('project', claudePlatform, 'skills', 'symlink')).toBe(
+      'symlink via .comet/skills/ in .claude/skills/ (project)',
+    );
   });
 
   it('prints the skill update command when updating installed skills', async () => {
