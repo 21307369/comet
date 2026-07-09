@@ -836,7 +836,7 @@ git commit -m "feat: expose ambient resume in classic runtime"
 - Produces: `resumeProbeCommand(targetPath, options)`
 - Produces CLI: `comet resume-probe [path] --utterance <text> --json`
 
-- [ ] **Step 1: Write failing app tests**
+- [x] **Step 1: Write failing app tests**
 
 Create `test/app/resume-probe.test.ts`:
 
@@ -912,7 +912,7 @@ it('exposes ambient resume probe help', () => {
 });
 ```
 
-- [ ] **Step 2: Run failing app tests**
+- [x] **Step 2: Run failing app tests**
 
 Run:
 
@@ -922,7 +922,7 @@ npx vitest run test/app/resume-probe.test.ts test/app/cli-help.test.ts
 
 Expected: FAIL because `app/commands/resume-probe.ts` and CLI registration are missing.
 
-- [ ] **Step 3: Implement the app command**
+- [x] **Step 3: Implement the app command**
 
 Create `app/commands/resume-probe.ts`:
 
@@ -1000,7 +1000,7 @@ export async function resumeProbeCommand(
 }
 ```
 
-- [ ] **Step 4: Register CLI command**
+- [x] **Step 4: Register CLI command**
 
 Modify `app/cli/index.ts`:
 
@@ -1024,7 +1024,7 @@ program
   });
 ```
 
-- [ ] **Step 5: Run focused app tests**
+- [x] **Step 5: Run focused app tests**
 
 Run:
 
@@ -1034,7 +1034,7 @@ npx vitest run test/app/resume-probe.test.ts test/app/cli-help.test.ts
 
 Expected: PASS.
 
-- [ ] **Step 6: Commit Task 3**
+- [x] **Step 6: Commit Task 3**
 
 ```bash
 git add app/commands/resume-probe.ts app/cli/index.ts test/app/resume-probe.test.ts test/app/cli-help.test.ts
