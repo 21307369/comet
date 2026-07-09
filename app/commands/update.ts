@@ -193,7 +193,7 @@ function formatSkillUpdateCommand(
 ): string {
   const destPrefix = scope === 'global' ? '~/' : '';
   if (installMode === 'symlink') {
-    return `symlink .comet/skills/ -> ${destPrefix}${getPlatformSkillsDir(platform, scope)}/skills/ (${scope})`;
+    return `symlink via .comet/skills/ in ${destPrefix}${getPlatformSkillsDir(platform, scope)}/skills/ (${scope})`;
   }
   return `copy assets/${languageSkillsDir} -> ${destPrefix}${getPlatformSkillsDir(platform, scope)}/skills/ (${scope})`;
 }
