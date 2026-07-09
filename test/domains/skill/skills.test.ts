@@ -1793,6 +1793,40 @@ describe('skills', () => {
       expect(manifest.skills).toContain('comet/scripts/comet-intent.mjs');
     });
 
+    it('documents Ambient Resume in both Comet entry Skills', async () => {
+      const zh = await fs.readFile(
+        path.resolve('assets', 'skills-zh', 'comet', 'SKILL.md'),
+        'utf-8',
+      );
+      const en = await fs.readFile(
+        path.resolve('assets', 'skills', 'comet', 'SKILL.md'),
+        'utf-8',
+      );
+
+      expect(zh).toContain('Comet Ambient Resume');
+      expect(zh).toContain('node "$COMET_RESUME_PROBE" probe --stdin');
+      expect(zh).toContain('不把无关任务挂到 active Comet change');
+      expect(en).toContain('Comet Ambient Resume');
+      expect(en).toContain('node "$COMET_RESUME_PROBE" probe --stdin');
+      expect(en).toContain('Never attach unrelated work');
+    });
+
+    it('documents the resume probe script in both script references', async () => {
+      const zh = await fs.readFile(
+        path.resolve('assets', 'skills-zh', 'comet', 'reference', 'scripts.md'),
+        'utf-8',
+      );
+      const en = await fs.readFile(
+        path.resolve('assets', 'skills', 'comet', 'reference', 'scripts.md'),
+        'utf-8',
+      );
+
+      expect(zh).toContain('COMET_RESUME_PROBE="$COMET_SCRIPTS_DIR/comet-resume-probe.mjs"');
+      expect(zh).toContain('| `COMET_RESUME_PROBE` |');
+      expect(en).toContain('COMET_RESUME_PROBE="$COMET_SCRIPTS_DIR/comet-resume-probe.mjs"');
+      expect(en).toContain('| `COMET_RESUME_PROBE` |');
+    });
+
     it('keeps review_mode wired through state and schema scripts', async () => {
       const stateScript = await fs.readFile(
         path.resolve('domains', 'comet-classic', 'classic-state-command.ts'),

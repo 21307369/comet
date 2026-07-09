@@ -20,6 +20,7 @@ COMET_GUARD="$COMET_SCRIPTS_DIR/comet-guard.mjs"
 COMET_HANDOFF="$COMET_SCRIPTS_DIR/comet-handoff.mjs"
 COMET_ARCHIVE="$COMET_SCRIPTS_DIR/comet-archive.mjs"
 COMET_INTENT="$COMET_SCRIPTS_DIR/comet-intent.mjs"
+COMET_RESUME_PROBE="$COMET_SCRIPTS_DIR/comet-resume-probe.mjs"
 
 # 脚本定位失败时停止流程
 if [ -z "$COMET_SCRIPTS_DIR" ]; then
@@ -28,7 +29,16 @@ if [ -z "$COMET_SCRIPTS_DIR" ]; then
 fi
 ```
 
-加载 comet 后，agent 应执行以上变量赋值一次，后续全程复用 `$COMET_GUARD`、`$COMET_STATE`、`$COMET_HANDOFF`、`$COMET_ARCHIVE`、`$COMET_INTENT`。
+加载 comet 后，agent 应执行以上变量赋值一次，后续全程复用 `$COMET_GUARD`、`$COMET_STATE`、`$COMET_HANDOFF`、`$COMET_ARCHIVE`、`$COMET_INTENT` 和 `$COMET_RESUME_PROBE`。
+
+| 变量 | 用途 |
+|------|------|
+| `COMET_STATE` | `.comet.yaml` 状态读写、phase 检查和恢复上下文 |
+| `COMET_GUARD` | 阶段退出守卫和 `--apply` 状态推进 |
+| `COMET_HANDOFF` | Design/Build handoff 上下文包生成 |
+| `COMET_ARCHIVE` | 一键归档和主 spec 同步 |
+| `COMET_INTENT` | `/comet` 入口意图识别和路由评分 |
+| `COMET_RESUME_PROBE` | 只读 Ambient Resume 探针，判断是否应恢复 active Comet workflow |
 
 ## 自动状态更新
 

@@ -211,6 +211,15 @@ and diagnostic recovery hints when a change is malformed or missing required evi
 </details>
 
 <details>
+<summary><code>comet resume-probe [path]</code> — Decide whether an active Comet workflow should resume</summary>
+
+Read-only probe for active changes, `.comet.yaml`, current phase, and the user request. It returns `auto_resume`,
+`ask_user`, `out_of_scope`, or `none`. `comet init/update` merges a `<comet-ambient-resume>` managed block into
+`AGENTS.md` and `CLAUDE.md` while preserving user-authored rules.
+
+</details>
+
+<details>
 <summary><code>comet dashboard [path]</code> — Launch local read-only dashboard server</summary>
 
 Starts a local HTTP server that displays a visual dashboard with active changes, phase status, task progress, and archive history. Auto-opens in your browser by default.

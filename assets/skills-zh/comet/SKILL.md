@@ -40,6 +40,22 @@ agent 做决策只需读本节，参考附录按需查阅。
    - `ask_user` → 按 `comet/reference/decision-point.md` 暂停并等待用户选择
    - `out_of_scope` → 说明本次输入不是 Comet workflow 启动/恢复请求，不初始化 change
 
+### Comet Ambient Resume
+
+当用户未显式输入 `/comet`，但当前仓库可能已有 active Comet change 时，开始非平凡工作前先运行只读探针：
+
+```bash
+node "$COMET_RESUME_PROBE" probe --stdin
+```
+
+探针只读仓库状态，不修改文件。按返回值处理：
+
+- `auto_resume`：输出一行 `[COMET] 检测到 active change <name>，按 <nextCommand> 恢复。`，然后进入 `nextCommand`。
+- `ask_user`：只问一个短问题并等待用户回复。
+- `out_of_scope` 或 `none`：不要进入 Comet workflow。
+
+原则：不把无关任务挂到 active Comet change，尤其不能只因为存在 `.comet.yaml` 就这样做。
+
 **CometIntentFrame 最小骨架**：
 
 ```json

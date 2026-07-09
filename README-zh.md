@@ -186,6 +186,14 @@ Comet Eval的自动化双Agent架构能够在线上与LangSmith/LangFuse环境�
 </details>
 
 <details>
+<summary><code>comet resume-probe [path]</code> — 判断是否应恢复活跃 Comet workflow</summary>
+
+只读检查 active change、`.comet.yaml`、当前 phase 和用户请求，输出 `auto_resume`、`ask_user`、`out_of_scope` 或 `none`。
+`comet init/update` 会把 `<comet-ambient-resume>` managed block 合并进 `AGENTS.md` 和 `CLAUDE.md`，保留用户已有规则。
+
+</details>
+
+<details>
 <summary><code>comet dashboard [path]</code> — 启动本地只读仪表盘服务</summary>
 
 启动本地 HTTP 服务器，展示包含活跃更改、阶段状态、任务进度和归档历史的可视化仪表盘。默认自动在浏览器中打开。

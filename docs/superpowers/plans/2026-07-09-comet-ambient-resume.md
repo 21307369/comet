@@ -1606,7 +1606,7 @@ git commit -m "feat: inject ambient resume project instructions"
 - Consumes: runtime and install capabilities from Tasks 1-5.
 - Produces: user-facing bilingual docs and release note for Ambient Resume.
 
-- [ ] **Step 1: Add failing documentation assertions**
+- [x] **Step 1: Add failing documentation assertions**
 
 Extend `test/domains/skill/skills.test.ts`:
 
@@ -1642,7 +1642,7 @@ it('documents the resume probe script in both script references', async () => {
 
 Extend `test/repository/readme.test.ts` with assertions that README-zh and README mention `comet resume-probe` and managed project instructions.
 
-- [ ] **Step 2: Run failing documentation tests**
+- [x] **Step 2: Run failing documentation tests**
 
 Run:
 
@@ -1652,7 +1652,7 @@ npx vitest run test/domains/skill/skills.test.ts test/repository/readme.test.ts
 
 Expected: FAIL because docs do not mention Ambient Resume yet.
 
-- [ ] **Step 3: Update Chinese Skill docs first**
+- [x] **Step 3: Update Chinese Skill docs first**
 
 In `assets/skills-zh/comet/SKILL.md`, add this subsection near Step 0:
 
@@ -1694,7 +1694,7 @@ In `assets/skills-zh/comet/reference/context-recovery.md`, add:
 如果用户没有提 `/comet`，但本仓库可能有 active change，开始非平凡工作前先运行 Ambient Resume 探针。只有返回 `auto_resume` 才自动恢复；`ask_user` 必须短问用户；`out_of_scope` 和 `none` 不进入 workflow。
 ```
 
-- [ ] **Step 4: Sync English Skill docs**
+- [x] **Step 4: Sync English Skill docs**
 
 Mirror the same content in:
 
@@ -1722,7 +1722,7 @@ The probe only reads repository state. Follow the returned action:
 Never attach unrelated work to an active Comet change only because `.comet.yaml` exists.
 ````
 
-- [ ] **Step 5: Update README docs**
+- [x] **Step 5: Update README docs**
 
 In `README-zh.md`, add a restrained CLI section entry:
 
@@ -1740,7 +1740,7 @@ In `README.md`, add the matching English entry:
 Read-only probe for active changes, `.comet.yaml`, current phase, and the user request. It returns `auto_resume`, `ask_user`, `out_of_scope`, or `none`. `comet init/update` merges a `<comet-ambient-resume>` managed block into `AGENTS.md` and `CLAUDE.md` while preserving user-authored rules.
 ```
 
-- [ ] **Step 6: Update changelog and version if required**
+- [x] **Step 6: Update changelog and version if required**
 
 Run these commands and record the result in the implementation notes:
 
@@ -1763,7 +1763,7 @@ Add this changelog entry under `### Added`:
 - **Ambient resume**: Adds a low-noise Comet resume probe and managed project instruction block so agents can recover active workflows when the user resumes work without explicitly invoking `/comet`.
 ```
 
-- [ ] **Step 7: Run focused docs and asset tests**
+- [x] **Step 7: Run focused docs and asset tests**
 
 Run:
 
@@ -1773,7 +1773,7 @@ npx vitest run test/domains/skill/skills.test.ts test/repository/readme.test.ts 
 
 Expected: PASS.
 
-- [ ] **Step 8: Run required build/runtime verification**
+- [x] **Step 8: Run required build/runtime verification**
 
 Run:
 
@@ -1787,7 +1787,7 @@ npx vitest run
 
 Expected: every command exits 0.
 
-- [ ] **Step 9: Commit Task 6**
+- [x] **Step 9: Commit Task 6**
 
 ```bash
 git add assets/skills-zh/comet assets/skills/comet README-zh.md README.md CHANGELOG.md package.json assets/manifest.json test/domains/skill/skills.test.ts test/repository/readme.test.ts test/repository/classic-runtime-assets.test.ts
@@ -1800,17 +1800,17 @@ If `package.json` did not change, omit it from `git add`.
 
 ## Final Verification Checklist
 
-- [ ] `npx vitest run test/domains/comet-classic/classic-resume-probe.test.ts`
-- [ ] `npx vitest run test/domains/comet-classic/classic-resume-probe-command.test.ts`
-- [ ] `npx vitest run test/app/resume-probe.test.ts`
-- [ ] `npx vitest run test/domains/skill/managed-markdown.test.ts test/domains/skill/project-instructions.test.ts`
-- [ ] `npx vitest run test/domains/comet-classic/comet-scripts.test.ts`
-- [ ] `npx vitest run test/repository/readme.test.ts test/repository/classic-runtime-assets.test.ts`
-- [ ] `node scripts/build/build-classic-runtime.mjs --check`
-- [ ] `node scripts/lint/architecture.mjs`
-- [ ] `node build.js`
-- [ ] `npx vitest run`
-- [ ] `git diff --check`
+- [x] `npx vitest run test/domains/comet-classic/classic-resume-probe.test.ts`
+- [x] `npx vitest run test/domains/comet-classic/classic-resume-probe-command.test.ts`
+- [x] `npx vitest run test/app/resume-probe.test.ts`
+- [x] `npx vitest run test/domains/skill/managed-markdown.test.ts test/domains/skill/project-instructions.test.ts`
+- [x] `npx vitest run test/domains/comet-classic/comet-scripts.test.ts`
+- [x] `npx vitest run test/repository/readme.test.ts test/repository/classic-runtime-assets.test.ts`
+- [x] `node scripts/build/build-classic-runtime.mjs --check`
+- [x] `node scripts/lint/architecture.mjs`
+- [x] `node build.js`
+- [x] `npx vitest run`
+- [x] `git diff --check`
 
 ## Execution Notes
 

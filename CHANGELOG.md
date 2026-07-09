@@ -2,6 +2,12 @@
 
 All notable changes to @rpamis/comet will be documented in this file.
 
+## What's Changed [0.4.0-beta.4] - 2026-07-09
+
+### Added
+
+- **Ambient resume**: Adds a low-noise Comet resume probe and managed project instruction block so agents can recover active workflows when the user resumes work without explicitly invoking `/comet`.
+
 ## What's Changed [0.4.0-beta.3] - 2026-07-08
 
 ### Fixed

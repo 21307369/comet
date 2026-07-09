@@ -20,6 +20,7 @@ COMET_GUARD="$COMET_SCRIPTS_DIR/comet-guard.mjs"
 COMET_HANDOFF="$COMET_SCRIPTS_DIR/comet-handoff.mjs"
 COMET_ARCHIVE="$COMET_SCRIPTS_DIR/comet-archive.mjs"
 COMET_INTENT="$COMET_SCRIPTS_DIR/comet-intent.mjs"
+COMET_RESUME_PROBE="$COMET_SCRIPTS_DIR/comet-resume-probe.mjs"
 
 # Stop workflow when script location fails
 if [ -z "$COMET_SCRIPTS_DIR" ]; then
@@ -28,7 +29,16 @@ if [ -z "$COMET_SCRIPTS_DIR" ]; then
 fi
 ```
 
-After loading comet, agents should run this bootstrap block once, then reuse `$COMET_GUARD`, `$COMET_STATE`, `$COMET_HANDOFF`, `$COMET_ARCHIVE`, and `$COMET_INTENT` throughout the session.
+After loading comet, agents should run this bootstrap block once, then reuse `$COMET_GUARD`, `$COMET_STATE`, `$COMET_HANDOFF`, `$COMET_ARCHIVE`, `$COMET_INTENT`, and `$COMET_RESUME_PROBE` throughout the session.
+
+| Variable | Purpose |
+|----------|---------|
+| `COMET_STATE` | `.comet.yaml` state reads/writes, phase checks, and recovery context |
+| `COMET_GUARD` | Phase exit guard and `--apply` state advancement |
+| `COMET_HANDOFF` | Design/Build handoff context pack generation |
+| `COMET_ARCHIVE` | One-command archive and main spec sync |
+| `COMET_INTENT` | `/comet` entry intent recognition and route scoring |
+| `COMET_RESUME_PROBE` | Read-only Ambient Resume probe that decides whether to resume an active Comet workflow |
 
 ## Auto state update
 
