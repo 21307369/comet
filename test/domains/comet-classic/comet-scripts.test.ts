@@ -144,6 +144,7 @@ describe('comet script contracts', () => {
       archive: await fs.readFile(path.join(scriptsDir, 'comet-archive.mjs'), 'utf-8'),
       'hook-guard': await fs.readFile(path.join(scriptsDir, 'comet-hook-guard.mjs'), 'utf-8'),
       intent: await fs.readFile(path.join(scriptsDir, 'comet-intent.mjs'), 'utf-8'),
+      'resume-probe': await fs.readFile(path.join(scriptsDir, 'comet-resume-probe.mjs'), 'utf-8'),
     };
 
     await expect(fs.access(path.join(scriptsDir, 'comet-runtime.mjs'))).resolves.toBeUndefined();
@@ -195,6 +196,7 @@ describe('comet scripts', () => {
       'comet-intent.mjs',
       'comet-yaml-validate.mjs',
       'comet-hook-guard.mjs',
+      'comet-resume-probe.mjs',
     ]) {
       const content = await fs.readFile(path.join(scriptsDir, name), 'utf-8');
       const destination = path.join(tmpScriptsDir, name);
