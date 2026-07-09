@@ -1,5 +1,6 @@
 import { promises as fs } from 'fs';
 import path from 'path';
+import { parseDocument } from 'yaml';
 import {
   COMET_RESUME_PROBE_SCHEMA_VERSION,
   resolveCometResumeProbe,
@@ -43,9 +44,12 @@ async function resolveUtterance(options: ResumeProbeOptions): Promise<string> {
 async function resolveProjectLanguage(projectPath: string): Promise<string> {
   const config = path.join(projectPath, '.comet', 'config.yaml');
   try {
-    const content = await fs.readFile(config, 'utf8');
-    const match = content.match(/^language:\s*(.+)$/mu);
-    return match?.[1]?.trim() || 'unknown';
+    const document = parseDocument(await fs.readFile(config, 'utf8'));
+    if (document.errors.length > 0) return 'unknown';
+    const value = document.toJS();
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return 'unknown';
+    const language = (value as Record<string, unknown>).language;
+    return typeof language === 'string' && language.trim() ? language.trim() : 'unknown';
   } catch {
     return 'unknown';
   }

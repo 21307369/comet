@@ -112,5 +112,9 @@ describe('CLI help text', () => {
     expect(help.stdout).toContain('resume-probe');
     expect(commandHelp.stdout).toContain('Probe whether an active Comet workflow should resume');
     expect(commandHelp.stdout).toContain('--utterance');
+    expect(commandHelp.stdout).toContain('--stdin');
+    expect(commandHelp.stdout).toContain('--json');
+    expect(commandHelp.stdout).toContain('--no-non-trivial-work');
+    expect(commandHelp.stdout).toContain('--already-in-comet-flow');
   });
 });

@@ -1,56 +1,147 @@
+import { spawnSync } from 'child_process';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { resumeProbeCommand } from '../../app/commands/resume-probe.js';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { ensureCliBuilt } from '../helpers/ensure-cli-built.js';
 
-let tmpDir: string;
-let output: string[];
-let error: string[];
+const repositoryRoot = path.resolve('.');
+const cli = path.join(repositoryRoot, 'bin', 'comet.js');
+const stateScript = path.resolve('assets', 'skills', 'comet', 'scripts', 'comet-state.mjs');
+const activeChange = 'resume-probe-change';
 
-async function writeFile(filePath: string, content: string): Promise<void> {
-  await fs.mkdir(path.dirname(filePath), { recursive: true });
-  await fs.writeFile(filePath, content, 'utf8');
+function runCli(
+  cwd: string,
+  args: string[],
+  input?: string,
+): ReturnType<typeof spawnSync> {
+  return spawnSync(process.execPath, [cli, ...args], {
+    cwd,
+    encoding: 'utf8',
+    input,
+  });
 }
 
-describe('resumeProbeCommand', () => {
+function state(cwd: string, args: string[], env: NodeJS.ProcessEnv = {}): void {
+  const result = spawnSync(process.execPath, [stateScript, ...args], {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, ...env },
+  });
+  if (result.status !== 0) {
+    throw new Error(
+      `comet-state command failed: ${result.status} ${result.stdout ?? ''}${result.stderr ?? ''}`,
+    );
+  }
+}
+
+function parseResult(stdout: string) {
+  return JSON.parse(stdout) as {
+    action: string;
+    schema_version: string;
+    changeName: string | null;
+    phase: string | null;
+    confidence: string;
+    reason: string;
+    nextCommand: string | null;
+  };
+}
+
+describe('resumeProbe command', () => {
+  let tmpDir: string;
+
+  beforeAll(async () => {
+    await ensureCliBuilt(repositoryRoot);
+  }, 120_000);
+
   beforeEach(async () => {
     tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'comet-resume-cli-'));
-    output = [];
-    error = [];
-    vi.spyOn(console, 'log').mockImplementation((value = '') => output.push(String(value)));
-    vi.spyOn(console, 'error').mockImplementation((value = '') => error.push(String(value)));
+    state(tmpDir, ['init', activeChange, 'full']);
+    state(tmpDir, ['set', activeChange, 'build_mode', 'executing-plans']);
+    state(tmpDir, ['set', activeChange, 'tdd_mode', 'direct']);
+    state(tmpDir, ['set', activeChange, 'isolation', 'branch']);
+    state(tmpDir, ['set', activeChange, 'verify_mode', 'light']);
+    await fs.mkdir(path.join(tmpDir, 'docs'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, 'docs', 'plan.md'), 'plan: done\n', 'utf8');
+    state(tmpDir, ['set', activeChange, 'plan', 'docs/plan.md']);
+    state(tmpDir, ['set', activeChange, 'phase', 'build'], {
+      COMET_FORCE_PHASE: '1',
+    });
+    await fs.mkdir(path.join(tmpDir, '.comet'), { recursive: true });
+    await fs.writeFile(path.join(tmpDir, '.comet', 'config.yaml'), 'language: "en"\n', 'utf8');
   });
 
   afterEach(async () => {
-    vi.restoreAllMocks();
     await fs.rm(tmpDir, { recursive: true, force: true });
   });
 
-  it('prints JSON probe output', async () => {
-    await writeFile(path.join(tmpDir, '.comet', 'config.yaml'), 'language: en\n');
-    await resumeProbeCommand(tmpDir, {
-      utterance: '继续',
-      json: true,
-      nonTrivialWork: true,
-      alreadyInCometFlow: false,
-    });
+  it('returns JSON using top-level CLI invocation and --utterance', () => {
+    const result = runCli(tmpDir, [
+      'resume-probe',
+      tmpDir,
+      '--utterance',
+      '继续',
+      '--json',
+    ]);
 
-    expect(JSON.parse(output.join('\n'))).toMatchObject({
-      schema_version: 'comet.resume_probe.v1',
-      action: 'none',
-    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(parseResult(result.stdout).action).toBe('auto_resume');
   });
 
-  it('prints a compact text summary outside JSON mode', async () => {
-    await writeFile(path.join(tmpDir, '.comet', 'config.yaml'), 'language: en\n');
-    await resumeProbeCommand(tmpDir, {
-      utterance: '继续',
-      json: false,
-      nonTrivialWork: true,
-      alreadyInCometFlow: false,
-    });
+  it('uses stdin over --utterance when --stdin is set', () => {
+    const fromUtterance = runCli(tmpDir, [
+      'resume-probe',
+      tmpDir,
+      '--utterance',
+      'what is this?',
+      '--json',
+    ]);
+    const fromStdin = runCli(
+      tmpDir,
+      ['resume-probe', tmpDir, '--utterance', 'what is this?', '--stdin', '--json'],
+      'continue',
+    );
 
-    expect(output.join('\n')).toContain('action: none');
+    expect(fromUtterance.status, fromUtterance.stderr).toBe(0);
+    expect(fromStdin.status, fromStdin.stderr).toBe(0);
+    expect(parseResult(fromUtterance.stdout).action).toBe('ask_user');
+    expect(parseResult(fromStdin.stdout).action).toBe('auto_resume');
+  });
+
+  it('maps --no-non-trivial-work into an out-of-scope result', () => {
+    const defaultResult = runCli(tmpDir, [
+      'resume-probe',
+      tmpDir,
+      '--utterance',
+      'what is this?',
+      '--json',
+    ]);
+    const noNonTrivial = runCli(tmpDir, [
+      'resume-probe',
+      tmpDir,
+      '--utterance',
+      'what is this?',
+      '--no-non-trivial-work',
+      '--json',
+    ]);
+
+    expect(defaultResult.status, defaultResult.stderr).toBe(0);
+    expect(noNonTrivial.status, noNonTrivial.stderr).toBe(0);
+    expect(parseResult(defaultResult.stdout).action).toBe('ask_user');
+    expect(parseResult(noNonTrivial.stdout).action).toBe('out_of_scope');
+  });
+
+  it('maps --already-in-comet-flow to out_of_scope', () => {
+    const result = runCli(tmpDir, [
+      'resume-probe',
+      tmpDir,
+      '--utterance',
+      'continue',
+      '--already-in-comet-flow',
+      '--json',
+    ]);
+
+    expect(result.status, result.stderr).toBe(0);
+    expect(parseResult(result.stdout).action).toBe('out_of_scope');
   });
 });
