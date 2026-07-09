@@ -8,6 +8,7 @@ import {
   removeCometRulesForPlatform,
   removeCometHooksForPlatform,
   removeWorkingDirs,
+  removeCometProjectInstructions,
 } from '../../domains/skill/uninstall.js';
 import { detectInstalledCometTargets } from './update.js';
 
@@ -101,6 +102,7 @@ export async function uninstallCommand(
   let totalSkills = 0;
   let totalRules = 0;
   let totalHooks = 0;
+  let projectInstructionsRemoved = 0;
 
   for (const target of selectedTargets) {
     const baseDir = getBaseDir(target.scope, projectPath);
@@ -137,6 +139,14 @@ export async function uninstallCommand(
   let workingDirsRemoved = 0;
   const hasProjectScope = selectedTargets.some((t) => t.scope === 'project');
   if (hasProjectScope) {
+    const removeResult = await removeCometProjectInstructions(projectPath);
+    projectInstructionsRemoved = removeResult.removed;
+    if (projectInstructionsRemoved > 0) {
+      log(`  Project instructions: ${projectInstructionsRemoved} managed block(s) removed`);
+    }
+  }
+
+  if (hasProjectScope) {
     const dirsResult = await removeWorkingDirs(projectPath);
     workingDirsRemoved = dirsResult.removed;
     if (workingDirsRemoved > 0) {
@@ -164,6 +174,7 @@ export async function uninstallCommand(
             totalRulesRemoved: totalRules,
             totalHooksRemoved: totalHooks,
           },
+          projectInstructionsRemoved,
         },
         null,
         2,
@@ -177,5 +188,8 @@ export async function uninstallCommand(
   log(`    Skills removed: ${totalSkills}`);
   log(`    Rules removed: ${totalRules}`);
   log(`    Hooks removed: ${totalHooks}`);
+  if (projectInstructionsRemoved > 0) {
+    log(`    Project instructions removed: ${projectInstructionsRemoved}`);
+  }
   log(`\n  Uninstall complete.\n`);
 }

@@ -116,6 +116,20 @@ describe('skills', () => {
       await expect(createWorkingDirs(tmpDir)).resolves.not.toThrow();
     });
 
+    it('installs ambient resume instructions while preserving user content', async () => {
+      await fs.writeFile(path.join(tmpDir, 'AGENTS.md'), '# User\n\nKeep this.\n', 'utf-8');
+
+      await createWorkingDirs(tmpDir, 'zh-CN');
+
+      const agents = await fs.readFile(path.join(tmpDir, 'AGENTS.md'), 'utf-8');
+      const claude = await fs.readFile(path.join(tmpDir, 'CLAUDE.md'), 'utf-8');
+      expect(agents).toContain('# User\n\nKeep this.');
+      expect(agents).toContain('<comet-ambient-resume>');
+      expect(agents).toContain('开始非平凡工作前');
+      expect(claude).toContain('<comet-ambient-resume>');
+      expect(claude).toContain('开始非平凡工作前');
+    });
+
     it('records the selected project language in Comet config', async () => {
       await createWorkingDirs(tmpDir, 'zh-CN');
 

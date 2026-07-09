@@ -13,6 +13,7 @@ import {
   getManifestSkills,
   mergeProjectConfig,
 } from '../../domains/skill/platform-install.js';
+import { installCometProjectInstructions } from '../../domains/skill/project-instructions.js';
 import {
   PLATFORMS,
   getPlatformSkillsDir,
@@ -344,6 +345,7 @@ export async function updateCommand(
   let totalCopied = 0;
   let totalRulesCopied = 0;
   let totalHooksInstalled = 0;
+  let projectInstructionsUpdated = 0;
   const targetResults = [];
   for (const target of targets) {
     const baseDir = getBaseDir(target.scope, projectPath);
@@ -419,6 +421,19 @@ export async function updateCommand(
   const hasProjectTargets = targets.some((target) => target.scope === 'project');
   if (hasProjectTargets) {
     await mergeProjectConfig(projectPath);
+    const projectTarget = targets.find((target) => target.scope === 'project');
+    const projectLanguageId = resolveTargetLanguage(
+      options.language,
+      projectTarget?.language ?? 'en',
+    );
+    const projectInstructionResult = await installCometProjectInstructions(
+      projectPath,
+      projectLanguageId,
+    );
+    projectInstructionsUpdated = projectInstructionResult.changed;
+    if (projectInstructionsUpdated > 0) {
+      log(`  Comet project instructions -> ${projectInstructionsUpdated} file(s) updated`);
+    }
     log(`  ${t(lang, 'configMerged')}`);
   }
 
@@ -458,6 +473,7 @@ export async function updateCommand(
           },
           rules: { totalCopied: totalRulesCopied },
           hooks: { totalInstalled: totalHooksInstalled },
+          projectInstructions: { updated: projectInstructionsUpdated },
           codegraph: codegraphStatus,
         },
         null,

@@ -9,6 +9,7 @@ import { getPlatformSkillsDir, type Platform } from '../../platform/install/plat
 import type { InstallScope, InstallMode } from '../../platform/install/types.js';
 import { formatSupportedArtifactLanguages, resolveArtifactLanguage } from './languages.js';
 import type { LanguageConfig, SkillLanguageId } from './languages.js';
+import { installCometProjectInstructions } from './project-instructions.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -1102,6 +1103,7 @@ async function createWorkingDirs(projectPath: string, language: string = 'en'): 
   }
 
   await mergeProjectConfig(projectPath, language);
+  await installCometProjectInstructions(projectPath, language === 'zh-CN' ? 'zh' : 'en');
 }
 
 export {
