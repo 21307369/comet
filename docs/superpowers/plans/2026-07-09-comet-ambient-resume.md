@@ -595,7 +595,7 @@ git commit -m "feat: add ambient resume probe logic"
   - Classic command `resume-probe probe --stdin`
   - Launcher `assets/skills/comet/scripts/comet-resume-probe.mjs`
 
-- [ ] **Step 1: Write failing command tests**
+- [x] **Step 1: Write failing command tests**
 
 Create `test/domains/comet-classic/classic-resume-probe-command.test.ts`:
 
@@ -647,7 +647,7 @@ expect(sources.resumeProbe).toContain("await main(['resume-probe', ...process.ar
 
 If the test currently uses a different object shape, add `resumeProbe` to that shape without changing unrelated assertions.
 
-- [ ] **Step 2: Run the failing tests**
+- [x] **Step 2: Run the failing tests**
 
 Run:
 
@@ -657,7 +657,7 @@ npx vitest run test/domains/comet-classic/classic-resume-probe-command.test.ts t
 
 Expected: FAIL because command, launcher, manifest, and generated asset are missing.
 
-- [ ] **Step 3: Implement Classic command files**
+- [x] **Step 3: Implement Classic command files**
 
 Create `domains/comet-classic/classic-resume-probe-command.ts`:
 
@@ -717,7 +717,7 @@ import { runClassicScript } from './classic-script-entry.js';
 process.exitCode = await runClassicScript(classicResumeProbeCommand);
 ```
 
-- [ ] **Step 4: Register the Classic command**
+- [x] **Step 4: Register the Classic command**
 
 Modify `domains/comet-classic/classic-cli.ts`:
 
@@ -754,7 +754,7 @@ export * from './classic-resume-probe.js';
 export * from './classic-resume-probe-command.js';
 ```
 
-- [ ] **Step 5: Register runtime output and manifest asset**
+- [x] **Step 5: Register runtime output and manifest asset**
 
 Modify `config/repository-layout.json`:
 
@@ -791,7 +791,7 @@ Modify `assets/manifest.json` and add this item after `comet/scripts/comet-inten
 "comet/scripts/comet-resume-probe.mjs"
 ```
 
-- [ ] **Step 6: Build generated Classic runtime assets**
+- [x] **Step 6: Build generated Classic runtime assets**
 
 Run:
 
@@ -804,7 +804,7 @@ Expected:
 - `assets/skills/comet/scripts/comet-runtime.mjs` changes.
 - `assets/skills/comet/scripts/comet-resume-probe.mjs` is created as a thin launcher.
 
-- [ ] **Step 7: Run focused command and script tests**
+- [x] **Step 7: Run focused command and script tests**
 
 Run:
 
@@ -814,7 +814,7 @@ npx vitest run test/domains/comet-classic/classic-resume-probe-command.test.ts t
 
 Expected: PASS.
 
-- [ ] **Step 8: Commit Task 2**
+- [x] **Step 8: Commit Task 2**
 
 ```bash
 git add domains/comet-classic/classic-resume-probe-command.ts domains/comet-classic/classic-resume-probe-entry.ts domains/comet-classic/classic-cli.ts domains/comet-classic/index.ts config/repository-layout.json assets/manifest.json assets/skills/comet/scripts/comet-runtime.mjs assets/skills/comet/scripts/comet-resume-probe.mjs test/domains/comet-classic/classic-resume-probe-command.test.ts test/domains/comet-classic/comet-scripts.test.ts
