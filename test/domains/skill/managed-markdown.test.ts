@@ -7,6 +7,7 @@ import {
   removeManagedMarkdownBlock,
 } from '../../../domains/skill/managed-markdown.js';
 
+const CRLF = '\r\n';
 let tmpDir: string;
 let filePath: string;
 
@@ -28,6 +29,25 @@ describe('managed markdown blocks', () => {
     );
   });
 
+  it('returns unchanged when managed block content is already up to date', async () => {
+    await fs.writeFile(
+      filePath,
+      'before\n\n<comet-ambient-resume>\nbody\n</comet-ambient-resume>\n\nafter\n',
+      'utf8',
+    );
+
+    const result = await mergeManagedMarkdownBlock(filePath, {
+      tagName: 'comet-ambient-resume',
+      content: 'body\n',
+    });
+
+    expect(result.action).toBe('unchanged');
+    expect(result.changed).toBe(false);
+    expect(await fs.readFile(filePath, 'utf8')).toBe(
+      'before\n\n<comet-ambient-resume>\nbody\n</comet-ambient-resume>\n\nafter\n',
+    );
+  });
+
   it('appends a managed block without changing user content', async () => {
     await fs.writeFile(filePath, '# User Rules\n\nKeep this.\n', 'utf8');
 
@@ -38,6 +58,41 @@ describe('managed markdown blocks', () => {
 
     expect(await fs.readFile(filePath, 'utf8')).toBe(
       '# User Rules\n\nKeep this.\n\n<comet-ambient-resume>\nbody\n</comet-ambient-resume>\n',
+    );
+  });
+
+  it('updates managed block content while preserving CRLF', async () => {
+    await fs.writeFile(
+      filePath,
+      [
+        'before',
+        '',
+        '<comet-ambient-resume>',
+        'old',
+        '</comet-ambient-resume>',
+        '',
+        'after',
+        '',
+      ].join(CRLF),
+      'utf8',
+    );
+
+    await mergeManagedMarkdownBlock(filePath, {
+      tagName: 'comet-ambient-resume',
+      content: 'new\r\n',
+    });
+
+    expect(await fs.readFile(filePath, 'utf8')).toBe(
+      [
+        'before',
+        '',
+        '<comet-ambient-resume>',
+        'new',
+        '</comet-ambient-resume>',
+        '',
+        'after',
+        '',
+      ].join(CRLF),
     );
   });
 
@@ -80,5 +135,75 @@ describe('managed markdown blocks', () => {
 
     expect(result.action).toBe('removed');
     expect(await fs.readFile(filePath, 'utf8')).toBe('before\n\nafter\n');
+  });
+
+  it('removes managed block while preserving surrounding content spacing', async () => {
+    await fs.writeFile(
+      filePath,
+      [
+        'before',
+        '',
+        '<comet-ambient-resume>',
+        'body',
+        '</comet-ambient-resume>',
+        '',
+        'after',
+        '',
+      ].join(CRLF),
+      'utf8',
+    );
+
+    const result = await removeManagedMarkdownBlock(filePath, 'comet-ambient-resume');
+
+    expect(result.action).toBe('removed');
+    expect(await fs.readFile(filePath, 'utf8')).toBe(
+      ['before', '', 'after', ''].join(CRLF),
+    );
+  });
+
+  it('rejects duplicate blocks', async () => {
+    await fs.writeFile(
+      filePath,
+      'before\n<comet-ambient-resume>\nbody\n</comet-ambient-resume>\n\n<comet-ambient-resume>\nbody\n</comet-ambient-resume>\nafter\n',
+      'utf8',
+    );
+
+    await expect(
+      mergeManagedMarkdownBlock(filePath, {
+        tagName: 'comet-ambient-resume',
+        content: 'new\n',
+      }),
+    ).rejects.toThrow(/duplicate managed block/);
+  });
+
+  it('rejects malformed blocks', async () => {
+    await fs.writeFile(
+      filePath,
+      '<comet-ambient-resume>\nbody\n</comet-ambient-resume>\n</comet-ambient-resume>\n',
+      'utf8',
+    );
+
+    await expect(
+      removeManagedMarkdownBlock(filePath, 'comet-ambient-resume'),
+    ).rejects.toThrow(/malformed managed block/);
+  });
+
+  it('rejects invalid tag names in merge and remove', async () => {
+    await expect(
+      mergeManagedMarkdownBlock(filePath, {
+        tagName: 'Comet-ambient-resume',
+        content: 'body\n',
+      }),
+    ).rejects.toThrow(/Invalid managed block tag name/);
+
+    await expect(removeManagedMarkdownBlock(filePath, 'Comet_ambient')).rejects.toThrow(
+      /Invalid managed block tag name/,
+    );
+  });
+
+  it('returns missing when removing from a missing file', async () => {
+    const result = await removeManagedMarkdownBlock(filePath, 'comet-ambient-resume');
+    expect(result.action).toBe('missing');
+    expect(result.changed).toBe(false);
   });
 });
