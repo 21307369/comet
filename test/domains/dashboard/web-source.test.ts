@@ -29,7 +29,8 @@ describe('dashboard web source contracts', () => {
     const source = await readDashboardSource();
 
     expect(source).toContain("const archived = change.status === 'archived'");
-    expect(source).toContain('已归档完成');
+    expect(source).toContain('已归档完成，流程已结束');
+    expect(source).not.toContain('已归档完成，后续无需再进入 Verify');
     expect(source).not.toContain(
       "const nextPhase = change.phase === 'verify' ? '归档' : 'Verify';",
     );

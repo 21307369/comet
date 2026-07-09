@@ -726,7 +726,7 @@ function TaskProgress({ change }) {
     archived || isComplete ? 'bg-ok-soft text-success' : 'bg-accent-softer text-fg-2';
   const dotTone = archived || isComplete ? 'bg-success' : 'bg-accent';
   const hintText = archived
-    ? '已归档完成，后续无需再进入 Verify'
+    ? '已归档完成，流程已结束'
     : isComplete
       ? `所有任务已完成，可以进入 ${change.phase === 'verify' ? '归档' : 'Verify'}`
       : `剩余 ${animatedRemainingValue} 项未完成，完成后进入 ${
