@@ -89,8 +89,11 @@ program
   .option('--utterance <text>', 'User request to classify', '')
   .option('--stdin', 'Read the user request from stdin')
   .option('--json', 'Output as JSON')
-  .option('--no-non-trivial-work', 'Treat the request as informational instead of executable work')
-  .option('--already-in-comet-flow', 'Report out_of_scope when the current turn is already inside Comet')
+  .option('--no-workflow-work', 'Treat the request as informational instead of workflow work')
+  .option(
+    '--already-in-comet-flow',
+    'Report out_of_scope when the current turn is already inside Comet',
+  )
   .action(async (targetPath = '.', options) => {
     await resumeProbeCommand(targetPath, options);
   });

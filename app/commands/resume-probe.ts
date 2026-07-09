@@ -13,6 +13,7 @@ interface ResumeProbeOptions {
   stdin?: boolean;
   json?: boolean;
   nonTrivialWork?: boolean;
+  workflowWork?: boolean;
   alreadyInCometFlow?: boolean;
 }
 
@@ -61,15 +62,16 @@ export async function resumeProbeCommand(
 ): Promise<void> {
   const projectPath = path.resolve(targetPath);
   const utterance = await resolveUtterance(options);
+  const workflowWork = options.workflowWork !== false && options.nonTrivialWork !== false;
   const input: CometResumeProbeInput = {
     schema_version: COMET_RESUME_PROBE_SCHEMA_VERSION,
     utterance,
     locale: await resolveProjectLanguage(projectPath),
     agent_context: {
-      non_trivial_work: options.nonTrivialWork !== false,
+      non_trivial_work: workflowWork,
       already_in_comet_flow: options.alreadyInCometFlow === true,
     },
   };
   const result = await resolveCometResumeProbe(projectPath, input);
-  console.log(options.json ? JSON.stringify(result, null, 2) : formatText(result));
+  process.stdout.write(options.json ? `${JSON.stringify(result, null, 2)}\n` : formatText(result));
 }

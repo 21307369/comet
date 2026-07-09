@@ -135,6 +135,20 @@ describe('classicResumeProbeCommand', () => {
     });
   });
 
+  it('accepts a raw user request through `probe --stdin`', async () => {
+    const result = await runWithStdin('continue cache-ttl', () =>
+      classicResumeProbeCommand(['probe', '--stdin'], { json: false }),
+    );
+    const payload = JSON.parse(result.stdout ?? '');
+
+    expect(result.exitCode).toBe(0);
+    expect(payload).toMatchObject({
+      action: 'auto_resume',
+      changeName: 'cache-ttl',
+      phase: 'build',
+    });
+  });
+
   it('emits a classic --json envelope that contains the probe stdout payload', async () => {
     const result = await runClassicCli(['resume-probe', 'probe', SAMPLE_INPUT, '--json']);
     const envelope = JSON.parse(result.stdout ?? '');

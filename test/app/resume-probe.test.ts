@@ -108,7 +108,7 @@ describe('resumeProbe command', () => {
     expect(parseResult(fromStdin.stdout).action).toBe('auto_resume');
   });
 
-  it('maps --no-non-trivial-work into an out-of-scope result', () => {
+  it('maps --no-workflow-work into an out-of-scope result', () => {
     const defaultResult = runCli(tmpDir, [
       'resume-probe',
       tmpDir,
@@ -121,7 +121,7 @@ describe('resumeProbe command', () => {
       tmpDir,
       '--utterance',
       'what is this?',
-      '--no-non-trivial-work',
+      '--no-workflow-work',
       '--json',
     ]);
 

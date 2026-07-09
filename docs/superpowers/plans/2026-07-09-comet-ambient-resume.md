@@ -30,7 +30,7 @@
 - Create `domains/comet-classic/classic-resume-probe-entry.ts`: thin launcher entry for `comet-resume-probe.mjs`.
 - Modify `domains/comet-classic/classic-cli.ts`: register `resume-probe` as a Classic runtime command.
 - Modify `domains/comet-classic/index.ts`: export probe domain and command APIs for app-level CLI reuse.
-- Create `app/commands/resume-probe.ts`: top-level `comet resume-probe` command wrapper with `--utterance`, `--stdin`, `--json`, `--non-trivial-work`, and `--already-in-comet-flow`.
+- Create `app/commands/resume-probe.ts`: top-level `comet resume-probe` command wrapper with `--utterance`, `--stdin`, `--json`, `--no-workflow-work`, and `--already-in-comet-flow`.
 - Modify `app/cli/index.ts`: register top-level `resume-probe [path]`.
 - Create `domains/skill/managed-markdown.ts`: generic XML-style managed markdown block merge/remove helper.
 - Create `domains/skill/project-instructions.ts`: render and install/remove the Comet Ambient Resume block for `AGENTS.md` and `CLAUDE.md`.
@@ -1017,7 +1017,7 @@ program
   .option('--utterance <text>', 'User request to classify', '')
   .option('--stdin', 'Read the user request from stdin')
   .option('--json', 'Output as JSON')
-  .option('--no-non-trivial-work', 'Treat the request as informational instead of executable work')
+  .option('--no-workflow-work', 'Treat the request as informational instead of workflow work')
   .option('--already-in-comet-flow', 'Report out_of_scope when the current turn is already inside Comet')
   .action(async (targetPath = '.', options) => {
     await resumeProbeCommand(targetPath, options);

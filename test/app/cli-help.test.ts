@@ -114,7 +114,8 @@ describe('CLI help text', () => {
     expect(commandHelp.stdout).toContain('--utterance');
     expect(commandHelp.stdout).toContain('--stdin');
     expect(commandHelp.stdout).toContain('--json');
-    expect(commandHelp.stdout).toContain('--no-non-trivial-work');
+    expect(commandHelp.stdout).toContain('--no-workflow-work');
+    expect(commandHelp.stdout).not.toContain('--no-non-trivial-work');
     expect(commandHelp.stdout).toContain('--already-in-comet-flow');
   });
 });

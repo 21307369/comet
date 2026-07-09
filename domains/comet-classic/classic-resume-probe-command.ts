@@ -1,5 +1,8 @@
 import type { ClassicCommandHandler, ClassicCommandResult } from './classic-cli.js';
-import { resolveCometResumeProbe } from './classic-resume-probe.js';
+import {
+  COMET_RESUME_PROBE_SCHEMA_VERSION,
+  resolveCometResumeProbe,
+} from './classic-resume-probe.js';
 
 function result(exitCode: number, stdout?: string, stderr?: string): ClassicCommandResult {
   return {
@@ -25,15 +28,37 @@ async function readStdin(): Promise<string> {
   return Buffer.concat(chunks).toString('utf8');
 }
 
+function rawUtteranceInput(utterance: string) {
+  return {
+    schema_version: COMET_RESUME_PROBE_SCHEMA_VERSION,
+    utterance,
+    locale: 'unknown',
+    agent_context: {
+      non_trivial_work: true,
+      already_in_comet_flow: false,
+    },
+  };
+}
+
+function parseStdinInput(source: string): unknown {
+  try {
+    return JSON.parse(source);
+  } catch {
+    return rawUtteranceInput(source);
+  }
+}
+
 export const classicResumeProbeCommand: ClassicCommandHandler = async (args) => {
   const [subcommand, input] = args;
   if (subcommand !== 'probe') return usage();
 
-  const source = input === '--stdin' ? await readStdin() : input;
+  const fromStdin = input === '--stdin';
+  const source = fromStdin ? await readStdin() : input;
   if (!source) return usage();
 
   try {
-    const resolution = await resolveCometResumeProbe(process.cwd(), JSON.parse(source));
+    const parsedInput = fromStdin ? parseStdinInput(source) : JSON.parse(source);
+    const resolution = await resolveCometResumeProbe(process.cwd(), parsedInput);
     return result(0, `${JSON.stringify(resolution, null, 2)}\n`);
   } catch (error) {
     if (error instanceof SyntaxError) {

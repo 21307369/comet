@@ -1,8 +1,10 @@
 import path from 'path';
 import { promises as fs } from 'fs';
+import { spawn } from 'child_process';
 import { fileExists, readDir } from '../../platform/fs/file-system.js';
-import { inspectClassicChange, type ClassicDiagnostic } from './classic-diagnostics.js';
+import type { ClassicDiagnostic } from './classic-diagnostics.js';
 import { readClassicState } from './classic-store.js';
+import type { ClassicStateProjection } from './classic-state.js';
 
 export const COMET_RESUME_PROBE_SCHEMA_VERSION = 'comet.resume_probe.v1' as const;
 
@@ -46,6 +48,7 @@ interface ActiveProbeChange {
   hasClassicProjection: boolean;
   verifyResult: 'pending' | 'pass' | 'fail' | null;
   text: string;
+  missingCometState: boolean;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -110,6 +113,79 @@ async function changeSearchText(changeDir: string, classic: ActiveProbeChange): 
   return parts.join('\n').toLowerCase();
 }
 
+function nextCommandForPhase(phase: string): string | null {
+  switch (phase) {
+    case 'open':
+      return '/comet-open';
+    case 'design':
+      return '/comet-design';
+    case 'build':
+      return '/comet-build';
+    case 'verify':
+      return '/comet-verify';
+    case 'archive':
+      return '/comet-archive';
+    default:
+      return null;
+  }
+}
+
+function diagnosticFromProjection(
+  changeDir: string,
+  name: string,
+  projection: ClassicStateProjection,
+): ClassicDiagnostic {
+  const classic = projection.classic;
+  const unknownKeys = projection.unknownKeys.filter((key) => key !== 'run_id');
+  if (!classic) {
+    return {
+      name,
+      valid: false,
+      workflow: 'unknown',
+      phase: 'invalid',
+      currentStep: null,
+      nextCommand: null,
+      runtimeMode: 'invalid',
+      runtimeEval: null,
+      evidence: [],
+      error: `${changeDir} does not contain valid Comet state`,
+    };
+  }
+  if (unknownKeys.length > 0) {
+    return {
+      name,
+      valid: false,
+      workflow: classic.workflow,
+      phase: classic.phase,
+      currentStep: null,
+      nextCommand: null,
+      runtimeMode: 'invalid',
+      runtimeEval: null,
+      evidence: [],
+      error: `unknown field(s): ${unknownKeys.join(', ')}`,
+    };
+  }
+  return {
+    name,
+    valid: true,
+    workflow: classic.workflow,
+    phase: classic.phase,
+    currentStep: null,
+    nextCommand: nextCommandForPhase(classic.phase),
+    runtimeMode: 'engine-projection',
+    runtimeEval: null,
+    evidence: [],
+  };
+}
+
+async function hasOpenSpecChangeFiles(changeDir: string): Promise<boolean> {
+  return (
+    (await fileExists(path.join(changeDir, 'proposal.md'))) ||
+    (await fileExists(path.join(changeDir, 'design.md'))) ||
+    (await fileExists(path.join(changeDir, 'tasks.md')))
+  );
+}
+
 async function discoverActiveChanges(projectRoot: string): Promise<ActiveProbeChange[]> {
   const changesDir = path.join(projectRoot, 'openspec', 'changes');
   if (!(await fileExists(changesDir))) return [];
@@ -121,11 +197,40 @@ async function discoverActiveChanges(projectRoot: string): Promise<ActiveProbeCh
     const changeDir = path.join(changesDir, entry);
     const stat = await fs.stat(changeDir).catch(() => null);
     if (!stat?.isDirectory()) continue;
-    if (!(await fileExists(path.join(changeDir, '.comet.yaml')))) continue;
+    const hasCometState = await fileExists(path.join(changeDir, '.comet.yaml'));
+    if (!hasCometState) {
+      if (!(await hasOpenSpecChangeFiles(changeDir))) continue;
+      const missingStateChange: ActiveProbeChange = {
+        name: entry,
+        workflow: 'unknown',
+        phase: 'invalid',
+        nextCommand: null,
+        diagnostic: {
+          name: entry,
+          valid: false,
+          workflow: 'unknown',
+          phase: 'invalid',
+          currentStep: null,
+          nextCommand: null,
+          runtimeMode: 'invalid',
+          runtimeEval: null,
+          evidence: [],
+          error: 'missing Comet state',
+        },
+        buildPause: null,
+        hasClassicProjection: false,
+        verifyResult: null,
+        text: '',
+        missingCometState: true,
+      };
+      missingStateChange.text = await changeSearchText(changeDir, missingStateChange);
+      changes.push(missingStateChange);
+      continue;
+    }
 
-    const projection = await readClassicState(changeDir);
+    const projection = await readClassicState(changeDir, { migrate: false });
     const classic = projection.classic;
-    const diagnostic = await inspectClassicChange(changeDir, entry);
+    const diagnostic = diagnosticFromProjection(changeDir, entry, projection);
     const hasClassicProjection = Boolean(classic);
     const phase = classic?.phase ?? diagnostic.phase;
     const workflow = classic?.workflow ?? diagnostic.workflow;
@@ -141,6 +246,7 @@ async function discoverActiveChanges(projectRoot: string): Promise<ActiveProbeCh
       hasClassicProjection,
       verifyResult: classic?.verifyResult ?? null,
       text: '',
+      missingCometState: false,
     };
     change.text = await changeSearchText(changeDir, change);
     changes.push(change);
@@ -183,6 +289,32 @@ const QUESTION_WORDS = [
   '命名',
 ];
 
+const GENERIC_RELATED_TOKENS = new Set([
+  'add',
+  'build',
+  'cache',
+  'change',
+  'code',
+  'design',
+  'docs',
+  'file',
+  'fix',
+  'implement',
+  'plan',
+  'readme',
+  'task',
+  'test',
+  'update',
+  '修改',
+  '更新',
+  '修复',
+  '添加',
+  '文档',
+  '任务',
+  '计划',
+  '实现',
+]);
+
 const OPT_OUT_WORDS = [
   'do not resume',
   "don't resume",
@@ -200,6 +332,7 @@ function includesAny(text: string, words: readonly string[]): boolean {
 }
 
 function hasDecisionPoint(change: ActiveProbeChange): boolean {
+  if (change.missingCometState) return true;
   if (!change.hasClassicProjection) return true;
   if (!change.diagnostic.valid) return true;
   if (change.phase === 'archive') return true;
@@ -219,12 +352,39 @@ function relatedEvidence(utterance: string, change: ActiveProbeChange): CometRes
   const tokens = change.text
     .split(/[^a-zA-Z0-9_\-\u4e00-\u9fff/]+/u)
     .map((token) => token.trim().toLowerCase())
-    .filter((token) => token.length >= 4);
+    .filter((token) => token.length >= 4 && !GENERIC_RELATED_TOKENS.has(token));
   const matched = [...new Set(tokens.filter((token) => text.includes(token)))].slice(0, 3);
   for (const token of matched) {
     evidence.push({ source: 'repo', quote: token });
   }
   return evidence;
+}
+
+async function gitDirtyFiles(projectRoot: string): Promise<string[]> {
+  return new Promise((resolve) => {
+    const child = spawn('git', ['status', '--short', '--untracked-files=all'], {
+      cwd: projectRoot,
+      stdio: ['ignore', 'pipe', 'ignore'],
+      shell: false,
+    });
+    const chunks: Buffer[] = [];
+    child.stdout.on('data', (chunk) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(String(chunk)));
+    });
+    child.on('error', () => resolve([]));
+    child.on('exit', (code) => {
+      if (code !== 0) {
+        resolve([]);
+        return;
+      }
+      const dirtyFiles = Buffer.concat(chunks)
+        .toString('utf8')
+        .split(/\r?\n/u)
+        .map((line) => line.trim())
+        .filter(Boolean);
+      resolve(dirtyFiles);
+    });
+  });
 }
 
 export async function resolveCometResumeProbe(
@@ -248,10 +408,16 @@ export async function resolveCometResumeProbe(
   if (changes.length === 0) {
     return result('none', null, 'none', 'no active Comet changes');
   }
+  const dirtyFiles = await gitDirtyFiles(projectRoot);
   if (changes.length > 1) {
     const named = changes.find((change) => lower.includes(change.name.toLowerCase()));
     if (!named) {
       return result('ask_user', null, 'low', 'multiple active changes require a change name');
+    }
+    if (dirtyFiles.length > 0) {
+      return result('ask_user', named, 'low', 'uncommitted worktree changes require attribution', [
+        { source: 'repo', quote: `${dirtyFiles.length} dirty file(s)` },
+      ]);
     }
     return hasDecisionPoint(named)
       ? result('ask_user', named, 'low', 'active change is at a decision point')
@@ -261,7 +427,16 @@ export async function resolveCometResumeProbe(
   }
 
   const [change] = changes;
+  if (dirtyFiles.length > 0) {
+    return result('ask_user', change, 'low', 'uncommitted worktree changes require attribution', [
+      { source: 'repo', quote: `${dirtyFiles.length} dirty file(s)` },
+    ]);
+  }
+
   if (hasDecisionPoint(change)) {
+    if (change.missingCometState) {
+      return result('ask_user', change, 'low', 'active OpenSpec change is missing Comet state');
+    }
     return result('ask_user', change, 'low', 'active change is at a decision point', [
       { source: 'state', quote: `phase: ${change.phase}` },
     ]);

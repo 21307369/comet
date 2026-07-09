@@ -1,6 +1,7 @@
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
+import { spawnSync } from 'child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveCometResumeProbe } from '../../../domains/comet-classic/classic-resume-probe.js';
 
@@ -29,6 +30,16 @@ async function createChange(
     path.join(tmpDir, 'docs', 'superpowers', 'plans', 'cache-ttl.md'),
     '- [ ] Update cache ttl\n',
   );
+}
+
+function git(args: string[]): void {
+  const result = spawnSync('git', args, {
+    cwd: tmpDir,
+    encoding: 'utf8',
+  });
+  if (result.status !== 0) {
+    throw new Error(`git ${args.join(' ')} failed: ${result.stderr || result.stdout}`);
+  }
 }
 
 const buildYaml = [
@@ -89,6 +100,75 @@ describe('resolveCometResumeProbe', () => {
       phase: 'build',
       nextCommand: '/comet-build',
     });
+  });
+
+  it('does not rewrite legacy command fields while probing', async () => {
+    await createChange('cache-ttl', `${buildYaml}build_command: npm test\n`);
+    const yamlPath = path.join(tmpDir, 'openspec', 'changes', 'cache-ttl', '.comet.yaml');
+    const before = await fs.readFile(yamlPath, 'utf8');
+
+    const result = await resolveCometResumeProbe(tmpDir, {
+      schema_version: 'comet.resume_probe.v1',
+      utterance: '继续刚才的任务',
+      agent_context: { non_trivial_work: true, already_in_comet_flow: false },
+    });
+
+    expect(result.action).toBe('auto_resume');
+    expect(await fs.readFile(yamlPath, 'utf8')).toBe(before);
+  });
+
+  it('asks before resuming when the worktree has unattributed changes', async () => {
+    await createChange('cache-ttl', buildYaml);
+    git(['init']);
+    await writeFile(path.join(tmpDir, 'README.md'), 'dirty user edit\n');
+
+    const result = await resolveCometResumeProbe(tmpDir, {
+      schema_version: 'comet.resume_probe.v1',
+      utterance: '继续刚才的任务',
+      agent_context: { non_trivial_work: true, already_in_comet_flow: false },
+    });
+
+    expect(result).toMatchObject({
+      action: 'ask_user',
+      confidence: 'low',
+      changeName: 'cache-ttl',
+    });
+    expect(result.reason).toContain('uncommitted');
+  });
+
+  it('does not auto resume from a single generic token match', async () => {
+    await createChange('cache-ttl', buildYaml, {
+      'tasks.md': '- [ ] Update cache ttl\n',
+    });
+
+    const result = await resolveCometResumeProbe(tmpDir, {
+      schema_version: 'comet.resume_probe.v1',
+      utterance: 'update README badges',
+      agent_context: { non_trivial_work: true, already_in_comet_flow: false },
+    });
+
+    expect(result.action).toBe('ask_user');
+    expect(result.reason).toContain('looks unrelated');
+  });
+
+  it('asks when an OpenSpec change exists without Comet state', async () => {
+    const root = path.join(tmpDir, 'openspec', 'changes', 'cache-ttl');
+    await writeFile(path.join(root, 'proposal.md'), 'Improve cache ttl\n');
+    await writeFile(path.join(root, 'tasks.md'), '- [ ] Update cache ttl\n');
+
+    const result = await resolveCometResumeProbe(tmpDir, {
+      schema_version: 'comet.resume_probe.v1',
+      utterance: '继续 cache-ttl',
+      agent_context: { non_trivial_work: true, already_in_comet_flow: false },
+    });
+
+    expect(result).toMatchObject({
+      action: 'ask_user',
+      confidence: 'low',
+      changeName: 'cache-ttl',
+      nextCommand: null,
+    });
+    expect(result.reason).toContain('missing Comet state');
   });
 
   it('auto resumes when the request names the active change', async () => {
@@ -171,6 +251,26 @@ describe('resolveCometResumeProbe', () => {
 
     expect(result.action).toBe('ask_user');
     expect(result.reason).toContain('multiple active changes');
+  });
+
+  it('does not auto resume a named change while the worktree has unattributed changes', async () => {
+    await createChange('cache-ttl', buildYaml);
+    await createChange('eval-noise', buildYaml.replace('Cache ttl design', 'Eval noise design'));
+    git(['init']);
+    await writeFile(path.join(tmpDir, 'notes.md'), 'manual edit\n');
+
+    const result = await resolveCometResumeProbe(tmpDir, {
+      schema_version: 'comet.resume_probe.v1',
+      utterance: 'continue cache-ttl',
+      agent_context: { non_trivial_work: true, already_in_comet_flow: false },
+    });
+
+    expect(result).toMatchObject({
+      action: 'ask_user',
+      confidence: 'low',
+      changeName: 'cache-ttl',
+    });
+    expect(result.reason).toContain('uncommitted');
   });
 
   it('asks the user when build is waiting at plan-ready', async () => {
